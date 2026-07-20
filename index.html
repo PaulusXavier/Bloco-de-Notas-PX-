@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bloco de Notas · Paulo Xavier</title>
+<meta name="theme-color" content="#5C7A6B">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- TELA DE ENTRADA -->
+<div id="auth-screen" class="screen">
+  <div class="auth-card pad-sheet">
+    <div class="spiral" aria-hidden="true"></div>
+    <p class="eyebrow">Registro pessoal</p>
+    <h1 class="brand">Bloco de Notas</h1>
+    <p class="credential">Paulo Xavier <span class="dot">·</span> CRP-20/09816</p>
+
+    <form id="auth-form" class="auth-form">
+      <label class="field">
+        <span>E-mail</span>
+        <input type="email" id="auth-email" required autocomplete="email">
+      </label>
+      <label class="field">
+        <span>Senha</span>
+        <input type="password" id="auth-password" required autocomplete="current-password" minlength="6">
+      </label>
+      <p id="auth-error" class="auth-error" hidden></p>
+      <button type="submit" id="auth-submit" class="btn btn-primary">Entrar</button>
+      <button type="button" id="auth-toggle" class="btn-link">Ainda não tenho conta — criar acesso</button>
+    </form>
+    <p class="auth-hint">O mesmo e-mail e senha abrem suas notas em qualquer aparelho.</p>
+  </div>
+</div>
+
+<!-- APP PRINCIPAL -->
+<div id="app-screen" class="screen pad-sheet" hidden>
+  <div class="spiral" aria-hidden="true"></div>
+  <header class="topbar">
+    <div class="topbar-title">
+      <p class="eyebrow">Bloco de notas</p>
+      <h1 class="brand brand-sm">Paulo Xavier <span class="dot">·</span> CRP-20/09816</h1>
+    </div>
+    <div class="topbar-actions">
+      <span id="sync-status" class="sync-status" title="Estado da sincronização">●</span>
+      <button id="logout-btn" class="btn-icon" title="Sair" aria-label="Sair">⏻</button>
+    </div>
+  </header>
+
+  <div class="toolbar">
+    <button id="new-note-btn" class="btn btn-primary">+ Nova nota</button>
+    <label class="search">
+      <span aria-hidden="true">🔍</span>
+      <input type="search" id="search-input" placeholder="Buscar nas notas…" aria-label="Buscar nas notas">
+    </label>
+  </div>
+
+  <main id="notes-list" class="notes-list" aria-live="polite">
+    <!-- cartões de notas injetados via JS -->
+  </main>
+
+  <div id="empty-state" class="empty-state" hidden>
+    <p class="empty-tab">▎</p>
+    <h2>Nenhuma nota ainda</h2>
+    <p>Toque em "Nova nota" para começar seu registro.</p>
+  </div>
+</div>
+
+<!-- MODAL DE EDIÇÃO -->
+<div id="note-modal" class="modal-backdrop" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="spiral spiral-modal" aria-hidden="true"></div>
+    <div class="modal-header">
+      <h2 id="modal-title">Nova nota</h2>
+      <button id="modal-close" class="btn-icon" aria-label="Fechar">✕</button>
+    </div>
+    <form id="note-form" class="note-form">
+      <label class="field">
+        <span>Título</span>
+        <input type="text" id="note-title" placeholder="Ex.: Observações da semana" required>
+      </label>
+      <label class="field">
+        <span>Data</span>
+        <input type="date" id="note-date" required>
+      </label>
+      <label class="field">
+        <span>Conteúdo</span>
+        <textarea id="note-content" rows="8" placeholder="Escreva aqui sua anotação…" required></textarea>
+      </label>
+      <button type="button" class="btn-attach" disabled title="Em breve">📎 Anexar arquivo (em breve)</button>
+      <div class="modal-actions">
+        <button type="button" id="print-note-btn" class="btn btn-secondary" hidden>🖨️ Imprimir</button>
+        <button type="button" id="delete-note-btn" class="btn btn-danger" hidden>Excluir</button>
+        <button type="submit" class="btn btn-primary">Salvar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="toast" class="toast" hidden></div>
+
+<!-- ÁREA USADA SOMENTE NA IMPRESSÃO -->
+<div id="print-area">
+  <p id="print-date"></p>
+  <h1 id="print-title"></h1>
+  <p id="print-content"></p>
+  <p id="print-footer">Paulo Xavier, Psicólogo, CRP-20/09816</p>
+</div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
