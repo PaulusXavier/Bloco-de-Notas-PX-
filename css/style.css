@@ -312,6 +312,13 @@ input:focus, textarea:focus {
   z-index: 10;
 }
 
+/* Correção do bug: o atributo [hidden] do HTML precisa desta regra para
+   sobrepor o display:flex acima. Sem isso, o modal fica sempre visível,
+   cobrindo a tela de login por baixo. */
+.modal-backdrop[hidden] {
+  display: none;
+}
+
 .modal {
   position: relative;
   width: 100%;
