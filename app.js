@@ -52,6 +52,9 @@ const noteContent  = document.getElementById("note-content");
 const noteSaveBtn  = document.getElementById("note-save-btn");
 const printBtn     = document.getElementById("print-note-btn");
 const deleteBtn    = document.getElementById("delete-note-btn");
+const attachBtn    = document.getElementById("attach-btn");
+const attachInput  = document.getElementById("attach-input");
+const attachmentsList = document.getElementById("attachments-list");
 
 const toast        = document.getElementById("toast");
 
@@ -66,6 +69,16 @@ let seenNoteIds = new Set(); // ids já exibidos, para não reanimar cards a cad
 let searchDebounceId = null;
 let updateReady = false; // true quando há uma nova versão do app esperando para ser aplicada
 let reloadingForUpdate = false;
+let currentAttachments = []; // anexos da nota aberta no momento no modal
+let attachmentsDirty = false; // true se anexos foram adicionados/removidos nesta edição
+
+// Guardados como base64 dentro do próprio documento da nota (e não no Firebase
+// Storage): assim os anexos entram no mesmo cache offline das notas e não
+// exigem habilitar um serviço pago. Em troca, cada nota inteira precisa caber
+// no limite de 1 MB do Firestore — por isso os limites abaixo.
+const MAX_ATTACHMENT_SIZE = 700 * 1024; // 700 KB por arquivo (antes de converter)
+const MAX_ATTACHMENTS_TOTAL = 900 * 1024; // soma dos arquivos de uma mesma nota
+const MAX_ATTACHMENTS_COUNT = 5;
 
 function reloadForUpdate() {
   if (reloadingForUpdate) return;
@@ -364,6 +377,12 @@ function renderNotes() {
     const dateEl = document.createElement("p");
     dateEl.className = "note-card-date";
     dateEl.textContent = formatDate(note.date);
+    if (Array.isArray(note.attachments) && note.attachments.length > 0) {
+      const attSpan = document.createElement("span");
+      attSpan.className = "note-card-attachments";
+      attSpan.textContent = `· 📎 ${note.attachments.length}`;
+      dateEl.append(" ", attSpan);
+    }
     const titleEl = document.createElement("h3");
     titleEl.className = "note-card-title";
     titleEl.textContent = title;
@@ -394,6 +413,125 @@ searchInput.addEventListener("input", () => {
   searchDebounceId = setTimeout(renderNotes, 120);
 });
 
+/* ---------- Anexos ---------- */
+function formatBytes(bytes) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function attachmentsTotalSize(list) {
+  return list.reduce((sum, a) => sum + (a.size || 0), 0);
+}
+
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+function downloadAttachment(att) {
+  const link = document.createElement("a");
+  link.href = att.data;
+  link.download = att.name || "anexo";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+}
+
+function renderAttachments() {
+  attachmentsList.innerHTML = "";
+  attachmentsList.hidden = currentAttachments.length === 0;
+
+  currentAttachments.forEach((att, index) => {
+    const chip = document.createElement("div");
+    chip.className = "attachment-chip";
+
+    const thumb = document.createElement("div");
+    thumb.className = "attachment-thumb";
+    if (att.type && att.type.startsWith("image/")) {
+      const img = document.createElement("img");
+      img.src = att.data;
+      img.alt = "";
+      thumb.appendChild(img);
+    } else {
+      thumb.textContent = "📄";
+    }
+
+    const info = document.createElement("div");
+    info.className = "attachment-info";
+    const nameEl = document.createElement("span");
+    nameEl.className = "attachment-name";
+    nameEl.textContent = att.name || "Arquivo";
+    const sizeEl = document.createElement("span");
+    sizeEl.className = "attachment-size";
+    sizeEl.textContent = formatBytes(att.size || 0);
+    info.append(nameEl, sizeEl);
+
+    const downloadBtn = document.createElement("button");
+    downloadBtn.type = "button";
+    downloadBtn.className = "attachment-action";
+    downloadBtn.title = "Baixar";
+    downloadBtn.setAttribute("aria-label", `Baixar ${att.name || "arquivo"}`);
+    downloadBtn.textContent = "⬇";
+    downloadBtn.addEventListener("click", () => downloadAttachment(att));
+
+    const removeBtn = document.createElement("button");
+    removeBtn.type = "button";
+    removeBtn.className = "attachment-action attachment-remove";
+    removeBtn.title = "Remover";
+    removeBtn.setAttribute("aria-label", `Remover ${att.name || "arquivo"}`);
+    removeBtn.textContent = "✕";
+    removeBtn.addEventListener("click", () => {
+      currentAttachments.splice(index, 1);
+      attachmentsDirty = true;
+      renderAttachments();
+    });
+
+    chip.append(thumb, info, downloadBtn, removeBtn);
+    attachmentsList.appendChild(chip);
+  });
+}
+
+attachBtn.addEventListener("click", () => attachInput.click());
+
+attachInput.addEventListener("change", async () => {
+  const files = Array.from(attachInput.files || []);
+  attachInput.value = ""; // permite escolher de novo o mesmo arquivo depois de removê-lo
+
+  for (const file of files) {
+    if (currentAttachments.length >= MAX_ATTACHMENTS_COUNT) {
+      noteFormError.textContent = `Cada nota aceita no máximo ${MAX_ATTACHMENTS_COUNT} anexos.`;
+      noteFormError.hidden = false;
+      break;
+    }
+    if (file.size > MAX_ATTACHMENT_SIZE) {
+      noteFormError.textContent = `"${file.name}" é maior que ${formatBytes(MAX_ATTACHMENT_SIZE)}. Escolha um arquivo menor.`;
+      noteFormError.hidden = false;
+      continue;
+    }
+    if (attachmentsTotalSize(currentAttachments) + file.size > MAX_ATTACHMENTS_TOTAL) {
+      noteFormError.textContent = "Os anexos desta nota já somam o máximo permitido. Remova algum para adicionar outro.";
+      noteFormError.hidden = false;
+      continue;
+    }
+    try {
+      const data = await fileToDataUrl(file);
+      currentAttachments.push({ name: file.name, type: file.type || "", size: file.size, data });
+      attachmentsDirty = true;
+      noteFormError.hidden = true;
+    } catch (err) {
+      console.error(err);
+      noteFormError.textContent = `Não foi possível ler "${file.name}".`;
+      noteFormError.hidden = false;
+    }
+  }
+  renderAttachments();
+});
+
 /* ---------- Modal: criar / editar ---------- */
 function openModal(note = null) {
   editingNoteId = note ? note.id : null;
@@ -404,6 +542,11 @@ function openModal(note = null) {
   noteFormError.hidden = true;
   deleteBtn.hidden = !note;
   printBtn.hidden = !note;
+  currentAttachments = note && Array.isArray(note.attachments)
+    ? note.attachments.map((a) => ({ ...a }))
+    : [];
+  attachmentsDirty = false;
+  renderAttachments();
   modalSnapshot = formState();
   noteModal.hidden = false;
   setTimeout(() => noteTitle.focus(), 50);
@@ -417,6 +560,9 @@ function closeModal() {
   editingNoteId = null;
   noteForm.reset();
   noteFormError.hidden = true;
+  currentAttachments = [];
+  attachmentsDirty = false;
+  renderAttachments();
   // Se uma nova versão do app chegou a ser instalada enquanto o usuário
   // editava uma nota, ela só é aplicada agora, ao fechar — assim nada do
   // que estava sendo digitado se perde.
@@ -425,7 +571,8 @@ function closeModal() {
 
 newNoteBtn.addEventListener("click", () => openModal());
 function requestClose() {
-  if (formState() !== modalSnapshot && !confirm("Descartar as alterações desta nota?")) return;
+  const hasChanges = formState() !== modalSnapshot || attachmentsDirty;
+  if (hasChanges && !confirm("Descartar as alterações desta nota?")) return;
   closeModal();
 }
 modalClose.addEventListener("click", requestClose);
@@ -449,6 +596,7 @@ noteForm.addEventListener("submit", async (e) => {
     title: noteTitle.value.trim(),
     content: noteContent.value.trim(),
     date: noteDate.value,
+    attachments: currentAttachments,
     updatedAt: serverTimestamp()
   };
   if (!payload.title || !payload.content) {
@@ -463,8 +611,7 @@ noteForm.addEventListener("submit", async (e) => {
     const wasEditing = !!editingNoteId;
     const write = wasEditing
       ? updateDoc(doc(notesRef, editingNoteId), payload)
-      // attachments só na criação: no update sobrescreveria anexos futuros.
-      : setDoc(doc(notesRef), { ...payload, attachments: [], createdAt: serverTimestamp() });
+      : setDoc(doc(notesRef), { ...payload, createdAt: serverTimestamp() });
     const result = await commitWrite(write);
     showToast(
       result === "synced"
