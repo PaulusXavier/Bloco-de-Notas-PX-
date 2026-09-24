@@ -1,0 +1,596 @@
+:root {
+  --linen: #F7F5EE;
+  --paper: #FFFDF7;
+  --sage: #5C7A6B;
+  --sage-dark: #435A4F;
+  --ochre: #C98A3B;
+  --ink: #3A362E;
+  --ink-soft: #8A8577;
+  --rule: #E4DFCF;
+  --danger: #B5533C;
+  --danger-soft: #E8B7A6;
+  --radius: 14px;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  font-size: 16px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--linen);
+  color: var(--ink);
+  font-family: "Segoe UI", system-ui, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection { background: rgba(92, 122, 107, 0.25); }
+
+.screen { min-height: 100vh; }
+
+/* ---------- Faixa de conexão ---------- */
+.offline-banner {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  padding-top: calc(10px + env(safe-area-inset-top, 0px));
+  background: var(--ochre);
+  color: #fff;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  text-align: center;
+  justify-content: center;
+  animation: slide-down 0.25s var(--ease);
+}
+
+@keyframes slide-down {
+  from { transform: translateY(-100%); }
+  to { transform: translateY(0); }
+}
+
+/* ---------- Folha de caderno ---------- */
+.pad-sheet {
+  position: relative;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 32px 28px 32px 64px;
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      transparent,
+      transparent 30px,
+      var(--rule) 31px
+    ),
+    var(--paper);
+  min-height: 100vh;
+}
+
+.pad-sheet::before {
+  /* margem colorida vertical, estilo caderno escolar */
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 46px;
+  width: 2px;
+  height: 100%;
+  background: var(--ochre);
+  opacity: 0.55;
+}
+
+.spiral {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 30px;
+  height: 100%;
+  background-image: radial-gradient(circle, var(--sage) 4px, transparent 4.5px);
+  background-size: 30px 34px;
+  background-position: 12px 10px;
+  background-repeat: repeat-y;
+  opacity: 0.35;
+}
+
+.spiral-modal { left: -2px; }
+
+/* ---------- Tela de login ---------- */
+#auth-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.auth-card {
+  width: 100%;
+  min-height: auto;
+  border-radius: var(--radius);
+  box-shadow: 0 18px 40px rgba(58, 54, 46, 0.12);
+  animation: rise-in 0.3s var(--ease);
+}
+
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.eyebrow {
+  margin: 0 0 4px;
+  font-size: 0.75rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.brand {
+  margin: 0 0 6px;
+  font-size: 1.9rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--sage-dark);
+}
+
+.brand-sm { font-size: 1.2rem; }
+
+.credential {
+  margin: 0 0 24px;
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+}
+
+.dot { margin: 0 4px; color: var(--ochre); }
+
+.auth-form { display: flex; flex-direction: column; gap: 16px; }
+
+.field { display: flex; flex-direction: column; gap: 6px; font-size: 0.9rem; }
+
+.field span { color: var(--ink-soft); font-weight: 600; }
+
+input, textarea {
+  font: inherit;
+  padding: 10px 12px;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+input:focus, textarea:focus {
+  outline: none;
+  border-color: var(--sage);
+  box-shadow: 0 0 0 3px rgba(92, 122, 107, 0.15);
+}
+
+.auth-error {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(181, 83, 60, 0.1);
+  color: var(--danger);
+  font-size: 0.85rem;
+  animation: rise-in 0.2s var(--ease);
+}
+
+.auth-hint {
+  margin-top: 18px;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+  text-align: center;
+}
+
+/* ---------- Botões ---------- */
+.btn {
+  position: relative;
+  font: inherit;
+  font-weight: 600;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: transform 0.1s ease, opacity 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+}
+.btn:active:not(:disabled) { transform: scale(0.97); }
+.btn:disabled { cursor: not-allowed; opacity: 0.7; }
+
+.btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(92, 122, 107, 0.35);
+}
+
+.btn-label { transition: opacity 0.15s ease; }
+
+.btn-spinner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.btn-primary { background: var(--sage); color: #fff; box-shadow: 0 2px 8px rgba(92, 122, 107, 0.25); }
+.btn-primary:hover:not(:disabled) { background: var(--sage-dark); }
+
+.btn-secondary {
+  background: var(--linen);
+  color: var(--sage-dark);
+  border: 1px solid var(--sage);
+}
+.btn-secondary:hover:not(:disabled) { background: #eef1ec; }
+
+.btn-danger {
+  background: transparent;
+  color: var(--danger);
+  border: 1px solid var(--danger);
+}
+.btn-danger:hover:not(:disabled) { background: rgba(181, 83, 60, 0.08); }
+
+.btn-link {
+  background: none;
+  border: none;
+  color: var(--sage-dark);
+  font-size: 0.85rem;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 4px;
+}
+.btn-link:hover { color: var(--sage); }
+
+.btn-icon {
+  background: none;
+  border: none;
+  font-size: 1.1rem;
+  cursor: pointer;
+  color: var(--ink-soft);
+  padding: 6px;
+  border-radius: 8px;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.btn-icon:hover { background: var(--rule); color: var(--ink); }
+
+.btn-attach {
+  align-self: flex-start;
+  background: none;
+  border: 1px dashed var(--rule);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  cursor: not-allowed;
+}
+
+/* ---------- App principal ---------- */
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+  gap: 12px;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sync-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: var(--linen);
+  border: 1px solid var(--rule);
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.sync-status {
+  font-size: 0.7rem;
+  transition: color 0.2s ease;
+}
+.sync-ok { color: var(--sage); }
+.sync-busy { color: var(--ochre); animation: pulse 1s infinite ease-in-out; }
+.sync-off { color: var(--danger); }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.search {
+  flex: 1;
+  min-width: 180px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  padding: 8px 14px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.search:focus-within {
+  border-color: var(--sage);
+  box-shadow: 0 0 0 3px rgba(92, 122, 107, 0.12);
+}
+.search input {
+  border: none;
+  padding: 0;
+  flex: 1;
+  background: transparent;
+}
+.search input:focus { box-shadow: none; }
+
+.notes-list {
+  display: grid;
+  gap: 14px;
+}
+
+.note-card {
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
+}
+
+/* Aplicada via JS só aos cards ainda não exibidos nesta sessão — os já
+   vistos não devem reanimar toda vez que a lista é filtrada pela busca. */
+.note-card-enter {
+  animation: card-in 0.25s var(--ease) backwards;
+}
+
+@keyframes card-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.note-card:hover {
+  box-shadow: 0 8px 20px rgba(58, 54, 46, 0.1);
+  transform: translateY(-2px);
+  border-color: var(--sage);
+}
+.note-card:active { transform: translateY(0); }
+
+.note-card-date {
+  margin: 0 0 4px;
+  font-size: 0.75rem;
+  color: var(--ochre);
+  font-weight: 600;
+}
+
+.note-card-title {
+  margin: 0 0 6px;
+  font-size: 1.05rem;
+  color: var(--ink);
+}
+
+.note-card-preview {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--ink-soft);
+  line-height: 1.4;
+}
+
+.no-results {
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--ink-soft);
+}
+.empty-tab { font-size: 1.6rem; color: var(--ochre); margin: 0; }
+
+/* ---------- Modal ---------- */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(58, 54, 46, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 10;
+  animation: fade-in 0.15s ease;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Correção do bug: o atributo [hidden] do HTML precisa desta regra para
+   sobrepor o display:flex acima. Sem isso, o modal fica sempre visível,
+   cobrindo a tela de login por baixo. */
+.modal-backdrop[hidden] {
+  display: none;
+}
+
+.modal {
+  position: relative;
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: var(--paper);
+  border-radius: var(--radius);
+  padding: 24px 24px 24px 44px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25);
+  animation: rise-in 0.2s var(--ease);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.modal-header h2 { margin: 0; font-size: 1.2rem; color: var(--sage-dark); }
+
+.note-form { display: flex; flex-direction: column; gap: 14px; }
+
+.note-form textarea { resize: vertical; }
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+/* ---------- Toast ---------- */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--ink);
+  color: #fff;
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  opacity: 0;
+  max-width: calc(100vw - 40px);
+  text-align: center;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 20;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ---------- Impressão ---------- */
+#print-area { display: none; }
+
+@media print {
+  @page {
+    margin: 0;
+  }
+
+  body * { visibility: hidden; }
+  #print-area, #print-area * { visibility: visible; }
+
+  #print-area {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    min-height: 100vh;
+    box-sizing: border-box;
+    padding: 48px 48px 48px 84px;
+    font-family: Georgia, serif;
+    color: #000;
+
+    /* linhas horizontais estilo caderno, igual ao .pad-sheet da tela */
+    background:
+      repeating-linear-gradient(
+        to bottom,
+        transparent,
+        transparent 30px,
+        var(--rule) 31px
+      ),
+      var(--paper);
+
+    /* força o navegador a imprimir os fundos/gradientes acima */
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    color-adjust: exact;
+  }
+
+  /* margem colorida vertical, igual ao .pad-sheet::before */
+  #print-area::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 66px;
+    width: 2px;
+    height: 100%;
+    background: var(--ochre);
+    opacity: 0.55;
+  }
+
+  /* espiral do caderno na lateral esquerda, igual à .spiral */
+  #print-area::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 30px;
+    height: 100%;
+    background-image: radial-gradient(circle, var(--sage) 4px, transparent 4.5px);
+    background-size: 30px 34px;
+    background-position: 12px 10px;
+    background-repeat: repeat-y;
+    opacity: 0.35;
+  }
+
+  #print-date {
+    position: relative;
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+    margin-bottom: 4px;
+  }
+  #print-title {
+    position: relative;
+    font-size: 1.4rem;
+    color: var(--sage-dark);
+    margin: 0 0 20px;
+  }
+  #print-content {
+    position: relative;
+    white-space: pre-wrap;
+    line-height: 31px; /* acompanha o espaçamento das linhas do fundo */
+  }
+  #print-footer {
+    position: relative;
+    margin-top: 40px;
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+  }
+}
+
+/* ---------- Responsivo ---------- */
+@media (max-width: 520px) {
+  .pad-sheet { padding: 24px 18px 24px 48px; }
+  .pad-sheet::before { left: 34px; }
+  .spiral { background-position: 8px 8px; }
+  .sync-label { display: none; }
+  .offline-banner { font-size: 0.78rem; padding: 8px 14px; }
+}
+
+/* ---------- Redução de movimento ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
