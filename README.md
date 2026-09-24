@@ -74,3 +74,17 @@ O modelo de dados já reserva um campo `attachments` em cada nota, vazio por
 enquanto. Quando você quiser anexar arquivos, dá pra evoluir o app para
 guardar os arquivos no **Firebase Storage** e salvar aqui só o link — sem
 precisar redesenhar nada do que já existe.
+
+## Publicar uma nova versão
+
+Sempre que alterar qualquer arquivo do app, aumente o número de `CACHE_NAME`
+em `service-worker.js` (ex.: `v4` → `v5`). É a mudança nesse arquivo que faz os
+aparelhos detectarem e aplicarem a atualização.
+
+## Segurança
+
+- Depois de criar o seu acesso, desative novos cadastros em **Authentication →
+  Settings → User actions → Enable create (sign-up)**. Assim ninguém mais
+  consegue criar conta apenas com o link público.
+- Ao sair (⏻), as notas guardadas no aparelho são apagadas — isso protege
+  aparelhos compartilhados.
