@@ -3,18 +3,21 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   onAuthStateChanged,
+  sendPasswordResetEmail,
   signOut
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   collection,
   doc,
-  addDoc,
+  setDoc,
   updateDoc,
   deleteDoc,
   onSnapshot,
   query,
   orderBy,
-  serverTimestamp
+  serverTimestamp,
+  terminate,
+  clearIndexedDbPersistence
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 /* ---------- Elementos ---------- */
@@ -76,9 +79,10 @@ function showToast(message) {
   toast.hidden = false;
   toast.classList.add("show");
   clearTimeout(showToast._t);
+  clearTimeout(showToast._h);
   showToast._t = setTimeout(() => {
     toast.classList.remove("show");
-    setTimeout(() => (toast.hidden = true), 200);
+    showToast._h = setTimeout(() => (toast.hidden = true), 200);
   }, 2600);
 }
 
@@ -94,6 +98,31 @@ function setButtonBusy(button, busy) {
   button.disabled = busy;
   if (spinner) spinner.hidden = !busy;
   if (label) label.style.opacity = busy ? "0" : "1";
+}
+
+// Data local (YYYY-MM-DD). toISOString() usa UTC e, no Brasil, devolve o dia
+// seguinte a partir do fim da tarde.
+function todayLocal() {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+// O Firestore só resolve a Promise de escrita quando o SERVIDOR confirma; offline
+// ela fica pendente (a escrita já está na fila local). Por isso não esperamos
+// para sempre: erros rápidos (ex.: regra negada) ainda aparecem no formulário e,
+// se demorar, tratamos como "salvo no aparelho".
+function commitWrite(promise) {
+  let timedOut = false;
+  const timer = new Promise((resolve) =>
+    setTimeout(() => { timedOut = true; resolve("queued"); }, navigator.onLine ? 4000 : 0)
+  );
+  promise.catch((err) => {
+    if (!timedOut) return;
+    console.error(err);
+    showToast("Uma alteração não pôde ser sincronizada e foi desfeita.");
+  });
+  return Promise.race([promise.then(() => "synced"), timer]);
 }
 
 /* ---------- Estado de conexão / sincronização ---------- */
@@ -143,7 +172,27 @@ authToggle.addEventListener("click", () => {
   authToggle.textContent = isSignUpMode
     ? "Já tenho conta — entrar"
     : "Ainda não tenho conta — criar acesso";
+  authPassword.autocomplete = isSignUpMode ? "new-password" : "current-password";
   authError.hidden = true;
+});
+
+document.getElementById("auth-reset").addEventListener("click", async () => {
+  const email = authEmail.value.trim();
+  if (!email) {
+    authError.textContent = "Digite seu e-mail acima e toque de novo em “Esqueci minha senha”.";
+    authError.hidden = false;
+    authEmail.focus();
+    return;
+  }
+  try {
+    await sendPasswordResetEmail(auth, email);
+    authError.hidden = true;
+    showToast("Se o e-mail tiver conta, enviamos um link para redefinir a senha");
+  } catch (err) {
+    console.error(err);
+    authError.textContent = friendlyAuthError(err.code);
+    authError.hidden = false;
+  }
 });
 
 authForm.addEventListener("submit", async (e) => {
@@ -191,12 +240,25 @@ function friendlyAuthError(code) {
 }
 
 logoutBtn.addEventListener("click", async () => {
+  if (
+    pendingWritesCount > 0 &&
+    !confirm("Há notas que ainda não foram sincronizadas e seriam perdidas ao sair. Sair mesmo assim?")
+  ) return;
   try {
     await signOut(auth);
   } catch (err) {
     console.error(err);
     showToast("Não foi possível sair agora. Tente novamente.");
+    return;
   }
+  // Apaga as notas guardadas neste aparelho (importante em aparelho compartilhado).
+  try {
+    await terminate(db);
+    await clearIndexedDbPersistence(db);
+  } catch (err) {
+    console.error(err);
+  }
+  window.location.reload();
 });
 
 onAuthStateChanged(auth, (user) => {
@@ -209,7 +271,10 @@ onAuthStateChanged(auth, (user) => {
   } else {
     appScreen.hidden = true;
     authScreen.hidden = false;
-    if (unsubscribeNotes) unsubscribeNotes();
+    if (unsubscribeNotes) { unsubscribeNotes(); unsubscribeNotes = null; }
+    noteModal.hidden = true;
+    editingNoteId = null;
+    searchInput.value = "";
     allNotes = [];
     seenNoteIds = new Set();
     renderNotes();
@@ -218,6 +283,7 @@ onAuthStateChanged(auth, (user) => {
 
 /* ---------- Notas: leitura em tempo real ---------- */
 function listenToNotes(uid) {
+  if (unsubscribeNotes) unsubscribeNotes();
   setSyncStatus(navigator.onLine ? "syncing" : "offline");
   seenNoteIds = new Set();
   const notesRef = collection(db, "users", uid, "notes");
@@ -227,7 +293,15 @@ function listenToNotes(uid) {
     q,
     { includeMetadataChanges: true },
     (snapshot) => {
-      allNotes = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+      // Mesma data: a mais recente primeiro. "estimate" evita createdAt nulo
+      // enquanto a nota ainda está pendente de sincronização.
+      allNotes = snapshot.docs
+        .map((d) => ({ id: d.id, ...d.data({ serverTimestamps: "estimate" }) }))
+        .sort(
+          (a, b) =>
+            (b.date || "").localeCompare(a.date || "") ||
+            (b.createdAt?.toMillis?.() ?? 0) - (a.createdAt?.toMillis?.() ?? 0)
+        );
       renderNotes();
 
       pendingWritesCount = snapshot.docs.filter((d) => d.metadata.hasPendingWrites).length;
@@ -285,14 +359,24 @@ function renderNotes() {
       card.style.animationDelay = `${Math.min(newCardIndex, 8) * 30}ms`;
       newCardIndex += 1;
     }
-    card.innerHTML = `
-      <p class="note-card-date">${formatDate(note.date)}</p>
-      <h3 class="note-card-title">${escapeHtml(title)}</h3>
-      <p class="note-card-preview">${escapeHtml(content).slice(0, 140)}${
-      content.length > 140 ? "…" : ""
-    }</p>
-    `;
+    // textContent (e não innerHTML): cortar texto já escapado quebrava
+    // entidades como "&amp;" no meio da prévia.
+    const dateEl = document.createElement("p");
+    dateEl.className = "note-card-date";
+    dateEl.textContent = formatDate(note.date);
+    const titleEl = document.createElement("h3");
+    titleEl.className = "note-card-title";
+    titleEl.textContent = title;
+    const previewEl = document.createElement("p");
+    previewEl.className = "note-card-preview";
+    previewEl.textContent = content.slice(0, 140) + (content.length > 140 ? "…" : "");
+    card.append(dateEl, titleEl, previewEl);
+    card.tabIndex = 0;
+    card.setAttribute("role", "button");
     card.addEventListener("click", () => openModal(note));
+    card.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openModal(note); }
+    });
     notesList.appendChild(card);
   });
 
@@ -316,13 +400,17 @@ function openModal(note = null) {
   modalTitle.textContent = note ? "Editar nota" : "Nova nota";
   noteTitle.value = note ? note.title || "" : "";
   noteContent.value = note ? note.content || "" : "";
-  noteDate.value = note ? note.date : new Date().toISOString().slice(0, 10);
+  noteDate.value = (note && note.date) || todayLocal();
   noteFormError.hidden = true;
   deleteBtn.hidden = !note;
   printBtn.hidden = !note;
+  modalSnapshot = formState();
   noteModal.hidden = false;
   setTimeout(() => noteTitle.focus(), 50);
 }
+
+let modalSnapshot = "";
+const formState = () => JSON.stringify([noteTitle.value, noteDate.value, noteContent.value]);
 
 function closeModal() {
   noteModal.hidden = true;
@@ -336,12 +424,20 @@ function closeModal() {
 }
 
 newNoteBtn.addEventListener("click", () => openModal());
-modalClose.addEventListener("click", closeModal);
+function requestClose() {
+  if (formState() !== modalSnapshot && !confirm("Descartar as alterações desta nota?")) return;
+  closeModal();
+}
+modalClose.addEventListener("click", requestClose);
+// Só fecha se o clique COMEÇOU no fundo: selecionar texto e soltar o mouse
+// fora do modal não pode descartar o que foi digitado.
+let backdropPressed = false;
+noteModal.addEventListener("mousedown", (e) => { backdropPressed = e.target === noteModal; });
 noteModal.addEventListener("click", (e) => {
-  if (e.target === noteModal) closeModal();
+  if (e.target === noteModal && backdropPressed) requestClose();
 });
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && !noteModal.hidden) closeModal();
+  if (e.key === "Escape" && !noteModal.hidden) requestClose();
 });
 
 noteForm.addEventListener("submit", async (e) => {
@@ -353,25 +449,26 @@ noteForm.addEventListener("submit", async (e) => {
     title: noteTitle.value.trim(),
     content: noteContent.value.trim(),
     date: noteDate.value,
-    attachments: [],
     updatedAt: serverTimestamp()
   };
+  if (!payload.title || !payload.content) {
+    noteFormError.textContent = "Preencha o título e o conteúdo da nota.";
+    noteFormError.hidden = false;
+    return;
+  }
 
   setButtonBusy(noteSaveBtn, true);
   try {
     const notesRef = collection(db, "users", currentUser.uid, "notes");
-    if (editingNoteId) {
-      await updateDoc(doc(notesRef, editingNoteId), payload);
-    } else {
-      payload.createdAt = serverTimestamp();
-      await addDoc(notesRef, payload);
-    }
-    // Quando offline, a Promise acima resolve assim que a escrita entra na
-    // fila local do Firestore — a nota já aparece na lista e será enviada
-    // de verdade quando a conexão voltar.
+    const wasEditing = !!editingNoteId;
+    const write = wasEditing
+      ? updateDoc(doc(notesRef, editingNoteId), payload)
+      // attachments só na criação: no update sobrescreveria anexos futuros.
+      : setDoc(doc(notesRef), { ...payload, attachments: [], createdAt: serverTimestamp() });
+    const result = await commitWrite(write);
     showToast(
-      navigator.onLine
-        ? (editingNoteId ? "Nota atualizada" : "Nota criada")
+      result === "synced"
+        ? (wasEditing ? "Nota atualizada" : "Nota criada")
         : "Salvo no aparelho — será sincronizado quando a internet voltar"
     );
     closeModal();
@@ -390,8 +487,8 @@ deleteBtn.addEventListener("click", async () => {
   deleteBtn.disabled = true;
   try {
     const notesRef = collection(db, "users", currentUser.uid, "notes");
-    await deleteDoc(doc(notesRef, editingNoteId));
-    showToast(navigator.onLine ? "Nota excluída" : "Exclusão salva — será sincronizada ao voltar a conexão");
+    const result = await commitWrite(deleteDoc(doc(notesRef, editingNoteId)));
+    showToast(result === "synced" ? "Nota excluída" : "Exclusão salva — será sincronizada ao voltar a conexão");
     closeModal();
   } catch (err) {
     console.error(err);
@@ -434,7 +531,11 @@ if ("serviceWorker" in navigator) {
       .catch((err) => console.error("Falha ao registrar service worker:", err));
   });
 
+  // Na primeira visita não há controller anterior: o clients.claim() do SW
+  // causaria um reload desnecessário (apagando o que estivesse digitado).
+  const hadController = !!navigator.serviceWorker.controller;
   navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (!hadController) return;
     // Se o usuário estiver com o modal de nota aberto (editando ou criando),
     // adia o recarregamento até ele fechar o modal — closeModal() cuida
     // disso ao checar "updateReady". Caso contrário, recarrega na hora.
@@ -446,4 +547,3 @@ if ("serviceWorker" in navigator) {
     reloadForUpdate();
   });
 }
-
