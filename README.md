@@ -68,12 +68,30 @@ icon-192.png, icon-192-maskable.png,
 icon-512.png, icon-512-maskable.png → ícones do app
 ```
 
-## Notas sobre anexos
+## Anexos
 
-O modelo de dados já reserva um campo `attachments` em cada nota, vazio por
-enquanto. Quando você quiser anexar arquivos, dá pra evoluir o app para
-guardar os arquivos no **Firebase Storage** e salvar aqui só o link — sem
-precisar redesenhar nada do que já existe.
+Cada nota aceita até **5 arquivos, de até 700 KB cada** (imagens, PDF, Word,
+texto). Ao abrir uma nota, toque em "📎 Anexar arquivo" para escolher um ou
+mais arquivos; eles aparecem numa lista com nome, tamanho, botão de baixar
+(⬇) e de remover (✕) antes mesmo de salvar a nota.
+
+Os anexos são guardados **dentro do próprio documento da nota no Firestore**
+(convertidos para texto/base64), e não no Firebase Storage. Isso foi proposital:
+
+- Funcionam offline pelo mesmo cache local das notas — sem precisar de mais
+  nenhuma configuração no Firebase.
+- Não exigem habilitar o Firebase Storage, que hoje pede um plano pago
+  (Blaze) mesmo para uso pequeno.
+- Em troca, o Firestore limita cada nota (texto + anexos somados) a 1 MB —
+  por isso o limite de 700 KB por arquivo e 5 arquivos por nota. Esses
+  limites estão no topo do arquivo `app.js`, nas constantes
+  `MAX_ATTACHMENT_SIZE`, `MAX_ATTACHMENTS_TOTAL` e `MAX_ATTACHMENTS_COUNT`,
+  caso queira ajustá-los.
+
+Se no futuro os anexos precisarem ser maiores (fotos em alta resolução,
+vídeos etc.), o caminho é migrar para o **Firebase Storage**, guardando ali
+os arquivos e salvando na nota apenas o link — isso exigiria habilitar o
+plano Blaze no projeto.
 
 ## Publicar uma nova versão
 
