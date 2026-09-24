@@ -16,6 +16,10 @@
 
 * { box-sizing: border-box; }
 
+/* Sem isto, regras como #auth-screen{display:flex} e .offline-banner{display:flex}
+   anulam o atributo [hidden] e os elementos nunca somem. */
+[hidden] { display: none !important; }
+
 body {
   margin: 0;
   min-height: 100vh;
@@ -494,14 +498,13 @@ input:focus, textarea:focus {
     margin: 0;
   }
 
-  body * { visibility: hidden; }
-  #print-area, #print-area * { visibility: visible; }
+  /* display:none (e não visibility:hidden) evita páginas em branco extras:
+     elementos invisíveis ainda ocupam espaço na impressão. */
+  body > *:not(#print-area) { display: none !important; }
 
   #print-area {
     display: block;
-    position: absolute;
-    top: 0;
-    left: 0;
+    position: relative;
     width: 100%;
     min-height: 100vh;
     box-sizing: border-box;
