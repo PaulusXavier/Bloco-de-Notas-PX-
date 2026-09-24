@@ -106,7 +106,14 @@
         <span>Conteúdo</span>
         <textarea id="note-content" rows="8" placeholder="Escreva aqui sua anotação…" required></textarea>
       </label>
-      <button type="button" class="btn-attach" disabled title="Em breve">📎 Anexar arquivo (em breve)</button>
+      <div class="field">
+        <span>Anexos</span>
+        <div id="attachments-list" class="attachments-list" hidden></div>
+        <button type="button" id="attach-btn" class="btn-attach">📎 Anexar arquivo</button>
+        <input type="file" id="attach-input" class="visually-hidden" multiple
+               accept="image/*,.pdf,.doc,.docx,.txt,.rtf">
+        <p class="attach-hint">Até 5 arquivos, 700 KB cada.</p>
+      </div>
       <p id="note-form-error" class="auth-error" role="alert" hidden></p>
       <div class="modal-actions">
         <button type="button" id="print-note-btn" class="btn btn-secondary" hidden>🖨️ Imprimir</button>
