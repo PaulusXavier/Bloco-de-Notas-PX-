@@ -6,11 +6,17 @@
 <title>Bloco de Notas · Paulo Xavier</title>
 <meta name="theme-color" content="#5C7A6B">
 <link rel="manifest" href="manifest.json">
-<link rel="icon" href="icons/icon-192.png">
-<link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="css/style.css">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
+
+<!-- FAIXA DE CONEXÃO (aparece só quando offline) -->
+<div id="offline-banner" class="offline-banner" role="status" aria-live="polite" hidden>
+  <span aria-hidden="true">⚠</span>
+  Sem conexão — suas notas continuam disponíveis e o que você salvar aqui será sincronizado automaticamente quando a internet voltar.
+</div>
 
 <!-- TELA DE ENTRADA -->
 <div id="auth-screen" class="screen">
@@ -29,8 +35,11 @@
         <span>Senha</span>
         <input type="password" id="auth-password" required autocomplete="current-password" minlength="6">
       </label>
-      <p id="auth-error" class="auth-error" hidden></p>
-      <button type="submit" id="auth-submit" class="btn btn-primary">Entrar</button>
+      <p id="auth-error" class="auth-error" role="alert" hidden></p>
+      <button type="submit" id="auth-submit" class="btn btn-primary">
+        <span class="btn-label">Entrar</span>
+        <span class="btn-spinner" hidden aria-hidden="true"></span>
+      </button>
       <button type="button" id="auth-toggle" class="btn-link">Ainda não tenho conta — criar acesso</button>
     </form>
     <p class="auth-hint">O mesmo e-mail e senha abrem suas notas em qualquer aparelho.</p>
@@ -46,7 +55,10 @@
       <h1 class="brand brand-sm">Paulo Xavier <span class="dot">·</span> CRP-20/09816</h1>
     </div>
     <div class="topbar-actions">
-      <span id="sync-status" class="sync-status" title="Estado da sincronização">●</span>
+      <span class="sync-pill" id="sync-pill" title="Estado da sincronização">
+        <span id="sync-status" class="sync-status" aria-hidden="true">●</span>
+        <span id="sync-label" class="sync-label">Sincronizado</span>
+      </span>
       <button id="logout-btn" class="btn-icon" title="Sair" aria-label="Sair">⏻</button>
     </div>
   </header>
@@ -92,10 +104,14 @@
         <textarea id="note-content" rows="8" placeholder="Escreva aqui sua anotação…" required></textarea>
       </label>
       <button type="button" class="btn-attach" disabled title="Em breve">📎 Anexar arquivo (em breve)</button>
+      <p id="note-form-error" class="auth-error" role="alert" hidden></p>
       <div class="modal-actions">
         <button type="button" id="print-note-btn" class="btn btn-secondary" hidden>🖨️ Imprimir</button>
         <button type="button" id="delete-note-btn" class="btn btn-danger" hidden>Excluir</button>
-        <button type="submit" class="btn btn-primary">Salvar</button>
+        <button type="submit" id="note-save-btn" class="btn btn-primary">
+          <span class="btn-label">Salvar</span>
+          <span class="btn-spinner" hidden aria-hidden="true"></span>
+        </button>
       </div>
     </form>
   </div>
@@ -111,6 +127,6 @@
   <p id="print-footer">Paulo Xavier, Psicólogo, CRP-20/09816</p>
 </div>
 
-<script type="module" src="js/app.js"></script>
+<script type="module" src="app.js"></script>
 </body>
 </html>
