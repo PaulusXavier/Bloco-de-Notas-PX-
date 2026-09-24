@@ -6,7 +6,7 @@ import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-aut
 import {
   initializeFirestore,
   persistentLocalCache,
-  persistentSingleTabManager
+  persistentMultipleTabManager
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -25,10 +25,10 @@ export const auth = getAuth(app);
 
 // Cache local persistente: notas criadas ou editadas offline ficam guardadas
 // no dispositivo e são enviadas automaticamente assim que a conexão voltar.
-// "persistentSingleTabManager" evita conflitos quando o app está aberto em
-// mais de uma aba do mesmo navegador (uma aba fica "dona" do cache local).
+// "persistentMultipleTabManager" deixa várias abas/janelas (ex.: app instalado +
+// navegador) compartilharem o mesmo cache local sem conflito.
 export const db = initializeFirestore(app, {
   localCache: persistentLocalCache({
-    tabManager: persistentSingleTabManager({})
+    tabManager: persistentMultipleTabManager()
   })
 });
