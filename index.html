@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Bloco de Notas · Paulo Xavier</title>
+<title>Grafia · Bloco de Notas</title>
 <meta name="theme-color" content="#5C7A6B">
 <meta name="robots" content="noindex, nofollow">
 <!-- Camada extra de defesa: mesmo que algum dia um bug permita injetar HTML,
@@ -35,13 +35,61 @@
   Sem conexão — suas notas continuam disponíveis e o que você salvar aqui será sincronizado automaticamente quando a internet voltar.
 </div>
 
+<!-- TELA DE CARREGAMENTO -->
+<!-- Fica visível até o Firebase confirmar (mesmo offline, usando a sessão
+     salva no aparelho) se há alguém logado ou não. Sem isso, a tela de login
+     "pisca" na frente por uma fração de segundo em toda abertura do app,
+     inclusive sem internet — dando a impressão errada de que é preciso
+     internet para abrir o app. -->
+<div id="loading-screen" class="screen loading-screen">
+  <div class="loading-spinner" aria-hidden="true"></div>
+  <p>Abrindo o Grafia…</p>
+</div>
+
+<!-- Mascote: um pequeno caderno com rosto, espiral e um lápis na mão.
+     Reaproveitado na tela de entrada (grande) e, via CSS, em tamanho menor
+     onde fizer sentido no futuro. -->
+<template id="mascot-template">
+  <svg class="mascot" viewBox="0 0 140 170" role="img" aria-label="Grafia, o mascote em formato de caderno">
+    <path d="M28 90 Q6 100 10 122" fill="none" stroke="var(--sage-dark)" stroke-width="7" stroke-linecap="round"/>
+    <circle cx="10" cy="122" r="7" fill="var(--sage-dark)"/>
+    <path d="M112 90 Q132 96 126 70" fill="none" stroke="var(--sage-dark)" stroke-width="7" stroke-linecap="round"/>
+    <circle cx="126" cy="70" r="7" fill="var(--sage-dark)"/>
+    <g transform="rotate(-35 126 70)">
+      <rect x="120.5" y="45" width="9" height="28" rx="2" fill="var(--ochre)"/>
+      <path d="M120.5 45 L125 35 L129.5 45 Z" fill="#7A5A33"/>
+    </g>
+    <path d="M55 148 L55 162" stroke="var(--sage-dark)" stroke-width="7" stroke-linecap="round"/>
+    <path d="M85 148 L85 162" stroke="var(--sage-dark)" stroke-width="7" stroke-linecap="round"/>
+    <ellipse cx="55" cy="165" rx="9" ry="5" fill="var(--ochre)"/>
+    <ellipse cx="85" cy="165" rx="9" ry="5" fill="var(--ochre)"/>
+    <rect x="18" y="8" width="104" height="132" rx="16" fill="var(--paper)" stroke="var(--sage-dark)" stroke-width="5"/>
+    <circle cx="18" cy="28" r="4" fill="var(--paper)" stroke="var(--sage-dark)" stroke-width="3"/>
+    <circle cx="18" cy="50" r="4" fill="var(--paper)" stroke="var(--sage-dark)" stroke-width="3"/>
+    <circle cx="18" cy="72" r="4" fill="var(--paper)" stroke="var(--sage-dark)" stroke-width="3"/>
+    <circle cx="18" cy="94" r="4" fill="var(--paper)" stroke="var(--sage-dark)" stroke-width="3"/>
+    <circle cx="18" cy="116" r="4" fill="var(--paper)" stroke="var(--sage-dark)" stroke-width="3"/>
+    <line x1="40" y1="14" x2="40" y2="134" stroke="var(--ochre)" stroke-width="2" opacity="0.55"/>
+    <line x1="50" y1="102" x2="100" y2="102" stroke="var(--rule)" stroke-width="4" stroke-linecap="round"/>
+    <line x1="50" y1="116" x2="90" y2="116" stroke="var(--rule)" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="62" cy="57" r="5.5" fill="var(--ink)"/>
+    <circle cx="86" cy="57" r="5.5" fill="var(--ink)"/>
+    <circle cx="64" cy="55" r="1.6" fill="#fff"/>
+    <circle cx="88" cy="55" r="1.6" fill="#fff"/>
+    <path d="M62 72 Q74 82 86 72" fill="none" stroke="var(--ink)" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="52" cy="68" r="5" fill="var(--ochre)" opacity="0.35"/>
+    <circle cx="96" cy="68" r="5" fill="var(--ochre)" opacity="0.35"/>
+  </svg>
+</template>
+
 <!-- TELA DE ENTRADA -->
-<div id="auth-screen" class="screen">
+<div id="auth-screen" class="screen" hidden>
   <div class="auth-card pad-sheet">
     <div class="spiral" aria-hidden="true"></div>
-    <p class="eyebrow">Registro pessoal</p>
-    <h1 class="brand">Bloco de Notas</h1>
-    <p class="credential">Paulo Xavier <span class="dot">·</span> CRP-20/09816</p>
+    <div id="mascot-slot" class="mascot-slot"></div>
+    <h1 class="brand">Grafia</h1>
+    <p class="tagline">Seu bloco de notas</p>
+    <p class="credential">Paulo Xavier, CRP-20/09816</p>
 
     <form id="auth-form" class="auth-form">
       <label class="field">
@@ -69,8 +117,11 @@
   <div class="spiral" aria-hidden="true"></div>
   <header class="topbar">
     <div class="topbar-title">
-      <p class="eyebrow">Bloco de notas</p>
-      <h1 class="brand brand-sm">Paulo Xavier <span class="dot">·</span> CRP-20/09816</h1>
+      <div class="topbar-brand">
+        <div id="mascot-slot-sm" class="mascot-slot mascot-slot-sm"></div>
+        <h1 class="brand brand-sm">Grafia</h1>
+      </div>
+      <p class="credential credential-sm">Paulo Xavier, CRP-20/09816</p>
     </div>
     <div class="topbar-actions">
       <span class="sync-pill" id="sync-pill" title="Estado da sincronização">
@@ -94,7 +145,15 @@
   </main>
 
   <div id="empty-state" class="empty-state" hidden>
-    <p class="empty-tab">▎</p>
+    <svg class="empty-icon" viewBox="0 0 64 64" aria-hidden="true">
+      <rect x="14" y="8" width="38" height="48" rx="4" fill="none" stroke="currentColor" stroke-width="2.5"/>
+      <line x1="14" y1="18" x2="8" y2="18" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="14" y1="30" x2="8" y2="30" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="14" y1="42" x2="8" y2="42" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="22" y1="22" x2="44" y2="22" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" opacity="0.55"/>
+      <line x1="22" y1="30" x2="44" y2="30" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" opacity="0.55"/>
+      <line x1="22" y1="38" x2="36" y2="38" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" opacity="0.55"/>
+    </svg>
     <h2>Nenhuma nota ainda</h2>
     <p>Toque em "Nova nota" para começar seu registro.</p>
   </div>
