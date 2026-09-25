@@ -6,6 +6,21 @@
 <title>Bloco de Notas · Paulo Xavier</title>
 <meta name="theme-color" content="#5C7A6B">
 <meta name="robots" content="noindex, nofollow">
+<!-- Camada extra de defesa: mesmo que algum dia um bug permita injetar HTML,
+     o navegador só executa scripts vindos deste site e do SDK do Firebase, e
+     só conecta aos domínios do próprio Firebase. -->
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'self';
+  script-src 'self' https://www.gstatic.com;
+  style-src 'self' 'unsafe-inline';
+  img-src 'self' data:;
+  connect-src 'self' https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.googleapis.com wss://*.firebaseio.com;
+  base-uri 'self';
+  form-action 'self';
+  frame-ancestors 'none';
+  object-src 'none';
+">
+
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
@@ -35,7 +50,7 @@
       </label>
       <label class="field">
         <span>Senha</span>
-        <input type="password" id="auth-password" required autocomplete="current-password" minlength="6">
+        <input type="password" id="auth-password" required autocomplete="current-password" minlength="6" autocapitalize="off" autocorrect="off">
       </label>
       <p id="auth-error" class="auth-error" role="alert" hidden></p>
       <button type="submit" id="auth-submit" class="btn btn-primary">
@@ -125,7 +140,7 @@
         <button type="button" id="attach-btn" class="btn-attach">📎 Anexar arquivo</button>
         <input type="file" id="attach-input" class="visually-hidden" multiple
                accept="image/*,.pdf,.doc,.docx,.txt,.rtf">
-        <p class="attach-hint">Até 5 arquivos, 700 KB cada.</p>
+        <p class="attach-hint">Até 5 arquivos, 500 KB cada (até ~700 KB no total).</p>
       </div>
       <p id="note-form-error" class="auth-error" role="alert" hidden></p>
       <div class="modal-actions">
