@@ -156,6 +156,8 @@ body {
 
 input, textarea {
   font: inherit;
+  font-size: 1rem; /* nunca menos que 16px: abaixo disso o Safari do iPhone
+                       dá zoom sozinho ao tocar no campo */
   padding: 10px 12px;
   border: 1px solid var(--rule);
   border-radius: 8px;
@@ -384,10 +386,19 @@ input:focus, textarea:focus {
 /* ---------- App principal ---------- */
 .topbar {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 20px;
-  gap: 12px;
+  gap: 10px 12px;
+}
+
+.topbar-title {
+  min-width: 0; /* permite ao texto quebrar/encolher em vez de estourar a tela */
+}
+
+.topbar-title h1 {
+  overflow-wrap: break-word;
 }
 
 .topbar-actions {
@@ -557,16 +568,117 @@ input:focus, textarea:focus {
 }
 
 .modal-header {
+  position: relative;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  min-height: 24px;
+  margin-bottom: 20px;
 }
-.modal-header h2 { margin: 0; font-size: 1.2rem; color: var(--sage-dark); }
+.modal-header h2 {
+  position: absolute;
+  left: 0;
+  right: 0;
+  text-align: center;
+  pointer-events: none;
+  margin: 0;
+  font-size: 1.2rem;
+  color: var(--sage-dark);
+}
+
+/* ---------- Bolinhas estilo macOS ---------- */
+.window-controls {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mac-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  font-size: 8px;
+  line-height: 1;
+  color: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mac-dot-close {
+  background: #FF5F57;
+  cursor: pointer;
+  color: rgba(0, 0, 0, 0.35); /* "×" sempre visível: em toque (celular) não existe :hover */
+}
+.mac-dot-close::before { content: "×"; font-size: 10px; }
+.mac-dot-close:hover { color: rgba(0, 0, 0, 0.6); }
+.mac-dot-close:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(92, 122, 107, 0.35);
+}
+.mac-dot-yellow { background: #FEBC2E; }
+.mac-dot-green { background: #28C840; }
+
+.note-card-dots {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 8px;
+}
+.mini-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  opacity: 0.55;
+}
+.mini-dot-red { background: #FF5F57; }
+.mini-dot-yellow { background: #FEBC2E; }
+.mini-dot-green { background: #28C840; }
 
 .note-form { display: flex; flex-direction: column; gap: 14px; }
 
 .note-form textarea { resize: vertical; }
+
+/* ---------- Navegação de páginas dentro da nota ---------- */
+.content-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.page-indicator {
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.page-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 2px;
+}
+
+.btn-page {
+  background: none;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  color: var(--sage-dark);
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+.btn-page:hover:not(:disabled) { background: rgba(92, 122, 107, 0.08); border-color: var(--sage); }
+.btn-page:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.btn-page-danger { color: var(--danger); }
+.btn-page-danger:hover:not(:disabled) { background: rgba(181, 83, 60, 0.08); border-color: var(--danger); }
 
 .modal-actions {
   display: flex;
@@ -672,10 +784,26 @@ input:focus, textarea:focus {
     color: var(--sage-dark);
     margin: 0 0 20px;
   }
-  #print-content {
+  /* Cada página da nota (além da primeira) começa numa folha impressa nova.
+     Rótulo e texto ficam juntos no mesmo bloco para não se separarem. */
+  .print-page {
+    position: relative;
+  }
+  .print-page:not(:first-child) {
+    page-break-before: always;
+    padding-top: 40px;
+  }
+  .print-page-label {
+    position: relative;
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+    margin: 0 0 10px;
+  }
+  .print-page-text {
     position: relative;
     white-space: pre-wrap;
     line-height: 31px; /* acompanha o espaçamento das linhas do fundo */
+    margin: 0;
   }
   #print-footer {
     position: relative;
@@ -692,6 +820,37 @@ input:focus, textarea:focus {
   .spiral { background-position: 8px 8px; }
   .sync-label { display: none; }
   .offline-banner { font-size: 0.78rem; padding: 8px 14px; }
+  .modal-backdrop { padding: 10px; }
+  .modal { padding: 20px 18px 20px 36px; }
+}
+
+/* Tablet e telas maiores: a lista de notas aproveita a largura extra em vez
+   de ficar numa coluna só e esticada. Só se aplica à tela principal — a
+   tela de login continua estreita e centralizada. */
+@media (min-width: 700px) {
+  #app-screen.pad-sheet { max-width: 900px; }
+  .notes-list { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+}
+
+/* Celular e tablet (toque): áreas de toque maiores nos botões pequenos,
+   pensados originalmente para clique de mouse. Baseado no tipo de ponteiro
+   (toque grosso), não na largura da tela — vale também para tablets grandes. */
+@media (pointer: coarse) {
+  .btn-icon {
+    padding: 10px;
+    font-size: 1.2rem;
+  }
+  .attachment-action {
+    padding: 10px;
+    font-size: 1.05rem;
+  }
+  .btn-page {
+    padding: 10px 14px;
+    font-size: 0.85rem;
+  }
+  .window-controls { gap: 12px; }
+  .mac-dot { width: 17px; height: 17px; }
+  .mac-dot-close::before { font-size: 12px; }
 }
 
 /* ---------- Redução de movimento ---------- */
