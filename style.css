@@ -33,6 +33,30 @@ body {
 
 .screen { min-height: 100vh; }
 
+.loading-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: var(--linen);
+  color: var(--ink-soft);
+  font-size: 0.95rem;
+}
+
+.loading-spinner {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 3px solid var(--rule);
+  border-top-color: var(--sage);
+  animation: loading-spin 0.8s linear infinite;
+}
+
+@keyframes loading-spin {
+  to { transform: rotate(360deg); }
+}
+
 /* ---------- Faixa de conexão ---------- */
 .offline-banner {
   position: sticky;
@@ -122,31 +146,95 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 
-.eyebrow {
-  margin: 0 0 4px;
-  font-size: 0.75rem;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
+/* ---------- Mascote ---------- */
+.mascot-slot {
+  display: flex;
+  justify-content: center;
+  margin: 0 0 6px;
+}
+
+.mascot {
+  width: 84px;
+  height: auto;
+  animation: mascot-in 0.4s var(--ease) 0.1s backwards;
+}
+
+@keyframes mascot-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.92); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mascot-slot-sm {
+  margin: 0;
+  flex-shrink: 0;
+}
+.mascot-slot-sm .mascot {
+  width: 26px;
+  animation: none;
+}
+
+.tagline {
+  margin: 0 0 2px;
+  font-size: 0.85rem;
   color: var(--ink-soft);
 }
 
+/* A marca usa uma serifada (só ela — o resto do app continua com a fonte de
+   sistema, para não competir) com um traço curvo por baixo lembrando um
+   sublinhado feito à mão, reforçando o ar de caderno pessoal. */
 .brand {
-  margin: 0 0 6px;
-  font-size: 1.9rem;
+  position: relative;
+  display: inline-block;
+  margin: 0 0 4px;
+  font-family: Georgia, "Iowan Old Style", "Palatino Linotype", "Times New Roman", serif;
+  font-size: 2rem;
   font-weight: 700;
   letter-spacing: -0.01em;
   color: var(--sage-dark);
 }
 
-.brand-sm { font-size: 1.2rem; }
-
-.credential {
-  margin: 0 0 24px;
-  font-size: 0.9rem;
-  color: var(--ink-soft);
+.auth-card .brand::after {
+  content: "";
+  position: absolute;
+  left: 2px;
+  right: 6%;
+  bottom: -7px;
+  height: 7px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 8'><path d='M2 5 Q15 1 28 5 T54 5 T80 5 T106 5' fill='none' stroke='%23C98A3B' stroke-width='2' stroke-linecap='round'/></svg>");
+  background-repeat: repeat-x;
+  background-size: 60px 8px;
+  opacity: 0.7;
 }
 
-.dot { margin: 0 4px; color: var(--ochre); }
+.brand-sm { font-size: 1.3rem; margin-bottom: 2px; }
+
+/* Selo de registro profissional: em vez de um texto corrido "Nome · CRP",
+   um pequeno carimbo levemente torto — combina com o tema de caderno e com
+   o fato de ser, na prática, um número de registro oficial. */
+.credential {
+  display: inline-block;
+  margin: 6px 0 22px;
+  padding: 3px 10px;
+  border: 1.5px solid var(--ochre);
+  border-radius: 4px;
+  transform: rotate(-1.5deg);
+  color: var(--ochre);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.credential-sm {
+  margin: 0;
+  font-size: 0.7rem;
+  padding: 2px 8px;
+}
 
 .auth-form { display: flex; flex-direction: column; gap: 16px; }
 
@@ -473,13 +561,31 @@ input:focus, textarea:focus {
 }
 
 .note-card {
+  position: relative;
   background: var(--paper);
   border: 1px solid var(--rule);
-  border-radius: 10px;
+  /* Canto superior direito quase reto: é onde a "dobra" abaixo se encaixa,
+     como o canto dobrado de uma página de caderno de verdade. */
+  border-radius: 10px 3px 10px 10px;
   padding: 14px 16px;
   cursor: pointer;
   transition: box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
 }
+
+.note-card::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 15px 15px 0;
+  border-color: transparent var(--linen) transparent transparent;
+  border-radius: 0 3px 0 4px;
+  transition: border-width 0.15s ease;
+}
+.note-card:hover::after { border-width: 0 19px 19px 0; }
 
 /* Aplicada via JS só aos cards ainda não exibidos nesta sessão — os já
    vistos não devem reanimar toda vez que a lista é filtrada pela busca. */
@@ -529,7 +635,13 @@ input:focus, textarea:focus {
   padding: 60px 20px;
   color: var(--ink-soft);
 }
-.empty-tab { font-size: 1.6rem; color: var(--ochre); margin: 0; }
+.empty-icon {
+  width: 44px;
+  height: 44px;
+  color: var(--ochre);
+  opacity: 0.75;
+  margin: 0 0 4px;
+}
 
 /* ---------- Modal ---------- */
 .modal-backdrop {
@@ -591,6 +703,7 @@ input:focus, textarea:focus {
   position: relative;
   z-index: 1;
   margin-left: auto;
+  font-size: 1.35rem;
 }
 
 /* ---------- Bolinhas estilo macOS ---------- */
@@ -599,12 +712,12 @@ input:focus, textarea:focus {
   z-index: 1;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 11px;
 }
 
 .mac-dot {
-  width: 12px;
-  height: 12px;
+  width: 17px;
+  height: 17px;
   border-radius: 50%;
   border: none;
   padding: 0;
@@ -621,7 +734,7 @@ input:focus, textarea:focus {
   cursor: pointer;
   color: rgba(0, 0, 0, 0.35); /* "×" sempre visível: em toque (celular) não existe :hover */
 }
-.mac-dot-close::before { content: "×"; font-size: 10px; }
+.mac-dot-close::before { content: "×"; font-size: 13px; }
 .mac-dot-close:hover { color: rgba(0, 0, 0, 0.6); }
 .mac-dot-close:focus-visible {
   outline: none;
@@ -911,9 +1024,30 @@ input:focus, textarea:focus {
     padding: 10px 14px;
     font-size: 0.85rem;
   }
-  .window-controls { gap: 12px; }
-  .mac-dot { width: 17px; height: 17px; }
-  .mac-dot-close::before { font-size: 12px; }
+  .window-controls { gap: 14px; }
+  .mac-dot { width: 22px; height: 22px; }
+  .mac-dot-close::before { font-size: 16px; }
+}
+
+/* Celular deitado (paisagem): a altura da tela fica curta, então aqui
+   reduzimos espaçamentos verticais e colocamos título/data lado a lado
+   mesmo fora do modo tela cheia, para caber mais conteúdo sem rolar tanto.
+   A rotação em si já era permitida (orientation: "any" no manifest) — isto
+   só deixa o visual confortável nela, e não interfere no retrato. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .pad-sheet { padding-top: 18px; padding-bottom: 18px; min-height: 100%; }
+  .topbar { margin-bottom: 12px; }
+  .toolbar { margin-bottom: 14px; }
+  .brand { font-size: 1.4rem; }
+  .auth-card { padding-top: 20px; padding-bottom: 20px; }
+
+  .modal-backdrop { padding: 12px; align-items: flex-start; }
+  .modal { max-height: 96vh; padding-top: 16px; padding-bottom: 16px; }
+  .modal-header { margin-bottom: 12px; }
+  .note-form { gap: 10px; }
+  .field-row { flex-direction: row; gap: 12px; }
+  .field-title-date { flex: 1; min-width: 0; }
+  .note-form textarea { min-height: 70px; }
 }
 
 /* ---------- Redução de movimento ---------- */
