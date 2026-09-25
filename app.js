@@ -84,9 +84,18 @@ let currentPageIndex = 0;
 // Storage): assim os anexos entram no mesmo cache offline das notas e não
 // exigem habilitar um serviço pago. Em troca, cada nota inteira precisa caber
 // no limite de 1 MB do Firestore — por isso os limites abaixo.
-const MAX_ATTACHMENT_SIZE = 700 * 1024; // 700 KB por arquivo (antes de converter)
-const MAX_ATTACHMENTS_TOTAL = 900 * 1024; // soma dos arquivos de uma mesma nota
+//
+// IMPORTANTE: base64 deixa o arquivo ~33% maior do que o tamanho original
+// (3 bytes viram 4 caracteres). MAX_ATTACHMENTS_TOTAL por isso é comparado
+// contra o tamanho JÁ CONVERTIDO (estimatedEncodedSize), não contra a soma
+// dos arquivos originais — senão o app "aprovava" anexos, um a um, que juntos
+// não cabiam de verdade na nota.
+const MAX_ATTACHMENT_SIZE = 500 * 1024; // 500 KB por arquivo (antes de converter)
+const MAX_ATTACHMENTS_TOTAL = 700 * 1024; // soma dos anexos JÁ EM BASE64
 const MAX_ATTACHMENTS_COUNT = 5;
+function estimatedEncodedSize(rawBytes) {
+  return Math.ceil(rawBytes / 3) * 4; // mesma fórmula do base64
+}
 // O Firestore recusa documentos acima de ~1 MB. Com várias páginas de texto
 // mais anexos, dá pra chegar perto disso — este limite avisa antes de tentar
 // salvar, em vez de deixar o Firestore recusar com um erro genérico.
@@ -205,6 +214,9 @@ authToggle.addEventListener("click", () => {
     ? "Já tenho conta — entrar"
     : "Ainda não tenho conta — criar acesso";
   authPassword.autocomplete = isSignUpMode ? "new-password" : "current-password";
+  // Só exige 8+ caracteres para contas NOVAS — contas antigas com senha de
+  // 6 caracteres continuam entrando normalmente.
+  authPassword.minLength = isSignUpMode ? 8 : 6;
   authError.hidden = true;
 });
 
@@ -222,7 +234,7 @@ document.getElementById("auth-reset").addEventListener("click", async () => {
     showToast("Se o e-mail tiver conta, enviamos um link para redefinir a senha");
   } catch (err) {
     console.error(err);
-    authError.textContent = friendlyAuthError(err.code);
+    authError.textContent = friendlyAuthError(err.code, "reset");
     authError.hidden = false;
   }
 });
@@ -237,10 +249,16 @@ authForm.addEventListener("submit", async (e) => {
     return;
   }
 
-  setButtonBusy(authSubmit, true);
   const email = authEmail.value.trim();
   const password = authPassword.value;
 
+  if (isSignUpMode && password.length < 8) {
+    authError.textContent = "A senha precisa ter pelo menos 8 caracteres.";
+    authError.hidden = false;
+    return;
+  }
+
+  setButtonBusy(authSubmit, true);
   try {
     if (isSignUpMode) {
       await createUserWithEmailAndPassword(auth, email, password);
@@ -256,19 +274,30 @@ authForm.addEventListener("submit", async (e) => {
   }
 });
 
-function friendlyAuthError(code) {
-  const map = {
+// context "login": tela de entrar/criar conta (fala de senha faz sentido).
+// context "reset": tela de "esqueci minha senha" (só pede e-mail — por isso
+// nunca deve devolver uma frase que mencione "senha incorreta" ali).
+function friendlyAuthError(code, context = "login") {
+  const common = {
     "auth/invalid-email": "E-mail inválido.",
-    "auth/user-not-found": "Conta não encontrada. Verifique o e-mail ou crie uma conta.",
-    "auth/wrong-password": "Senha incorreta.",
-    "auth/invalid-credential": "E-mail ou senha incorretos.",
-    "auth/email-already-in-use": "Já existe uma conta com esse e-mail. Tente entrar.",
-    "auth/weak-password": "A senha precisa ter pelo menos 6 caracteres.",
     "auth/too-many-requests": "Muitas tentativas seguidas. Aguarde um momento e tente novamente.",
     "auth/network-request-failed": "Falha de rede. Verifique sua conexão e tente novamente.",
     "auth/user-disabled": "Esta conta foi desativada."
   };
-  return map[code] || "Não foi possível concluir. Tente novamente.";
+  if (context === "reset") {
+    return common[code] || "Não foi possível enviar o e-mail agora. Tente novamente em instantes.";
+  }
+  const loginOnly = {
+    // "Conta não encontrada" e "Senha incorreta" foram unificadas de propósito:
+    // mensagens diferentes para cada caso permitiriam a alguém descobrir, por
+    // tentativa e erro, quais e-mails têm conta no app (enumeração de contas).
+    "auth/user-not-found": "E-mail ou senha incorretos.",
+    "auth/wrong-password": "E-mail ou senha incorretos.",
+    "auth/invalid-credential": "E-mail ou senha incorretos.",
+    "auth/email-already-in-use": "Não foi possível concluir. Se você já tem conta, tente entrar.",
+    "auth/weak-password": "A senha precisa ter pelo menos 8 caracteres."
+  };
+  return common[code] || loginOnly[code] || "Não foi possível concluir. Tente novamente.";
 }
 
 logoutBtn.addEventListener("click", async () => {
@@ -453,8 +482,10 @@ function formatBytes(bytes) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+// Soma o tamanho REAL dos anexos já em base64 (o que de fato vai pro
+// Firestore) — não o tamanho original dos arquivos, que é ~33% menor.
 function attachmentsTotalSize(list) {
-  return list.reduce((sum, a) => sum + (a.size || 0), 0);
+  return list.reduce((sum, a) => sum + (a.data ? a.data.length : 0), 0);
 }
 
 function fileToDataUrl(file) {
@@ -546,7 +577,7 @@ attachInput.addEventListener("change", async () => {
       noteFormError.hidden = false;
       continue;
     }
-    if (attachmentsTotalSize(currentAttachments) + file.size > MAX_ATTACHMENTS_TOTAL) {
+    if (attachmentsTotalSize(currentAttachments) + estimatedEncodedSize(file.size) > MAX_ATTACHMENTS_TOTAL) {
       noteFormError.textContent = "Os anexos desta nota já somam o máximo permitido. Remova algum para adicionar outro.";
       noteFormError.hidden = false;
       continue;
