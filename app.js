@@ -16,6 +16,7 @@ import {
   query,
   orderBy,
   serverTimestamp,
+  deleteField,
   terminate,
   clearIndexedDbPersistence
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
@@ -49,6 +50,11 @@ const noteFormError = document.getElementById("note-form-error");
 const noteTitle    = document.getElementById("note-title");
 const noteDate     = document.getElementById("note-date");
 const noteContent  = document.getElementById("note-content");
+const pageIndicator = document.getElementById("page-indicator");
+const pagePrevBtn  = document.getElementById("page-prev-btn");
+const pageNextBtn  = document.getElementById("page-next-btn");
+const addPageBtn   = document.getElementById("add-page-btn");
+const deletePageBtn = document.getElementById("delete-page-btn");
 const noteSaveBtn  = document.getElementById("note-save-btn");
 const printBtn     = document.getElementById("print-note-btn");
 const deleteBtn    = document.getElementById("delete-note-btn");
@@ -71,6 +77,8 @@ let updateReady = false; // true quando há uma nova versão do app esperando pa
 let reloadingForUpdate = false;
 let currentAttachments = []; // anexos da nota aberta no momento no modal
 let attachmentsDirty = false; // true se anexos foram adicionados/removidos nesta edição
+let currentPages = [""]; // páginas da nota aberta no momento no modal (uma nota pode ter várias)
+let currentPageIndex = 0;
 
 // Guardados como base64 dentro do próprio documento da nota (e não no Firebase
 // Storage): assim os anexos entram no mesmo cache offline das notas e não
@@ -79,6 +87,10 @@ let attachmentsDirty = false; // true se anexos foram adicionados/removidos nest
 const MAX_ATTACHMENT_SIZE = 700 * 1024; // 700 KB por arquivo (antes de converter)
 const MAX_ATTACHMENTS_TOTAL = 900 * 1024; // soma dos arquivos de uma mesma nota
 const MAX_ATTACHMENTS_COUNT = 5;
+// O Firestore recusa documentos acima de ~1 MB. Com várias páginas de texto
+// mais anexos, dá pra chegar perto disso — este limite avisa antes de tentar
+// salvar, em vez de deixar o Firestore recusar com um erro genérico.
+const MAX_NOTE_SIZE = 950 * 1024;
 
 function reloadForUpdate() {
   if (reloadingForUpdate) return;
@@ -103,6 +115,13 @@ function formatDate(iso) {
   if (!iso) return "";
   const [y, m, d] = iso.split("-");
   return `${d}/${m}/${y}`;
+}
+
+// Junta o texto de todas as páginas de uma nota (para busca e prévia). Notas
+// antigas, salvas antes de existir mais de uma página, ainda têm só "content".
+function getNoteText(note) {
+  if (Array.isArray(note.pages) && note.pages.length > 0) return note.pages.join("\n");
+  return note.content || "";
 }
 
 function setButtonBusy(button, busy) {
@@ -343,7 +362,7 @@ function renderNotes() {
     ? allNotes.filter(
         (n) =>
           (n.title || "").toLowerCase().includes(term) ||
-          (n.content || "").toLowerCase().includes(term)
+          getNoteText(n).toLowerCase().includes(term)
       )
     : allNotes;
 
@@ -360,7 +379,8 @@ function renderNotes() {
   let newCardIndex = 0;
   filtered.forEach((note) => {
     const title = note.title || "";
-    const content = note.content || "";
+    const content = getNoteText(note);
+    const pageCount = Array.isArray(note.pages) ? note.pages.length : 1;
     const isNew = !seenNoteIds.has(note.id);
 
     const card = document.createElement("article");
@@ -372,11 +392,24 @@ function renderNotes() {
       card.style.animationDelay = `${Math.min(newCardIndex, 8) * 30}ms`;
       newCardIndex += 1;
     }
+    const dotsEl = document.createElement("div");
+    dotsEl.className = "note-card-dots";
+    dotsEl.setAttribute("aria-hidden", "true");
+    dotsEl.innerHTML =
+      '<span class="mini-dot mini-dot-red"></span>' +
+      '<span class="mini-dot mini-dot-yellow"></span>' +
+      '<span class="mini-dot mini-dot-green"></span>';
     // textContent (e não innerHTML): cortar texto já escapado quebrava
     // entidades como "&amp;" no meio da prévia.
     const dateEl = document.createElement("p");
     dateEl.className = "note-card-date";
     dateEl.textContent = formatDate(note.date);
+    if (pageCount > 1) {
+      const pagesSpan = document.createElement("span");
+      pagesSpan.className = "note-card-attachments";
+      pagesSpan.textContent = `· 📄 ${pageCount} páginas`;
+      dateEl.append(" ", pagesSpan);
+    }
     if (Array.isArray(note.attachments) && note.attachments.length > 0) {
       const attSpan = document.createElement("span");
       attSpan.className = "note-card-attachments";
@@ -389,7 +422,7 @@ function renderNotes() {
     const previewEl = document.createElement("p");
     previewEl.className = "note-card-preview";
     previewEl.textContent = content.slice(0, 140) + (content.length > 140 ? "…" : "");
-    card.append(dateEl, titleEl, previewEl);
+    card.append(dotsEl, dateEl, titleEl, previewEl);
     card.tabIndex = 0;
     card.setAttribute("role", "button");
     card.addEventListener("click", () => openModal(note));
@@ -532,12 +565,61 @@ attachInput.addEventListener("change", async () => {
   renderAttachments();
 });
 
+/* ---------- Páginas dentro da nota ---------- */
+// A textarea sempre mostra uma página por vez; o texto das outras fica
+// guardado em currentPages. Atualiza a cada tecla para nunca perder nada ao
+// trocar de página.
+function loadPageIntoTextarea() {
+  noteContent.value = currentPages[currentPageIndex] || "";
+}
+
+function updatePageNav() {
+  pageIndicator.textContent = `Página ${currentPageIndex + 1} de ${currentPages.length}`;
+  pagePrevBtn.disabled = currentPageIndex === 0;
+  pageNextBtn.disabled = currentPageIndex === currentPages.length - 1;
+  deletePageBtn.hidden = currentPages.length <= 1;
+}
+
+noteContent.addEventListener("input", () => {
+  currentPages[currentPageIndex] = noteContent.value;
+});
+
+pagePrevBtn.addEventListener("click", () => {
+  if (currentPageIndex === 0) return;
+  currentPageIndex -= 1;
+  loadPageIntoTextarea();
+  updatePageNav();
+});
+
+pageNextBtn.addEventListener("click", () => {
+  if (currentPageIndex === currentPages.length - 1) return;
+  currentPageIndex += 1;
+  loadPageIntoTextarea();
+  updatePageNav();
+});
+
+addPageBtn.addEventListener("click", () => {
+  currentPages.push("");
+  currentPageIndex = currentPages.length - 1;
+  loadPageIntoTextarea();
+  updatePageNav();
+  noteContent.focus();
+});
+
+deletePageBtn.addEventListener("click", () => {
+  if (currentPages.length <= 1) return;
+  if (!confirm(`Excluir a página ${currentPageIndex + 1}? O texto dela será perdido.`)) return;
+  currentPages.splice(currentPageIndex, 1);
+  currentPageIndex = Math.min(currentPageIndex, currentPages.length - 1);
+  loadPageIntoTextarea();
+  updatePageNav();
+});
+
 /* ---------- Modal: criar / editar ---------- */
 function openModal(note = null) {
   editingNoteId = note ? note.id : null;
   modalTitle.textContent = note ? "Editar nota" : "Nova nota";
   noteTitle.value = note ? note.title || "" : "";
-  noteContent.value = note ? note.content || "" : "";
   noteDate.value = (note && note.date) || todayLocal();
   noteFormError.hidden = true;
   deleteBtn.hidden = !note;
@@ -547,13 +629,23 @@ function openModal(note = null) {
     : [];
   attachmentsDirty = false;
   renderAttachments();
+
+  // Notas antigas (de antes de existir mais de uma página) só têm "content";
+  // viram uma nota de página única.
+  currentPages = note
+    ? (Array.isArray(note.pages) && note.pages.length > 0 ? [...note.pages] : [note.content || ""])
+    : [""];
+  currentPageIndex = 0;
+  loadPageIntoTextarea();
+  updatePageNav();
+
   modalSnapshot = formState();
   noteModal.hidden = false;
   setTimeout(() => noteTitle.focus(), 50);
 }
 
 let modalSnapshot = "";
-const formState = () => JSON.stringify([noteTitle.value, noteDate.value, noteContent.value]);
+const formState = () => JSON.stringify([noteTitle.value, noteDate.value, currentPages]);
 
 function closeModal() {
   noteModal.hidden = true;
@@ -563,6 +655,8 @@ function closeModal() {
   currentAttachments = [];
   attachmentsDirty = false;
   renderAttachments();
+  currentPages = [""];
+  currentPageIndex = 0;
   // Se uma nova versão do app chegou a ser instalada enquanto o usuário
   // editava uma nota, ela só é aplicada agora, ao fechar — assim nada do
   // que estava sendo digitado se perde.
@@ -585,6 +679,12 @@ noteModal.addEventListener("click", (e) => {
 });
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && !noteModal.hidden) requestClose();
+  // Ctrl/Cmd+Enter salva de qualquer campo do modal (inclusive da textarea,
+  // onde Enter sozinho só quebra linha).
+  if ((e.ctrlKey || e.metaKey) && e.key === "Enter" && !noteModal.hidden) {
+    e.preventDefault();
+    noteForm.requestSubmit();
+  }
 });
 
 noteForm.addEventListener("submit", async (e) => {
@@ -592,15 +692,22 @@ noteForm.addEventListener("submit", async (e) => {
   if (!currentUser) return;
 
   noteFormError.hidden = true;
+  const pages = currentPages.map((p) => p ?? "");
+  const hasContent = pages.some((p) => p.trim().length > 0);
   const payload = {
     title: noteTitle.value.trim(),
-    content: noteContent.value.trim(),
+    pages,
     date: noteDate.value,
     attachments: currentAttachments,
     updatedAt: serverTimestamp()
   };
-  if (!payload.title || !payload.content) {
-    noteFormError.textContent = "Preencha o título e o conteúdo da nota.";
+  if (!payload.title || !hasContent) {
+    noteFormError.textContent = "Preencha o título e o conteúdo de ao menos uma página.";
+    noteFormError.hidden = false;
+    return;
+  }
+  if (new Blob([JSON.stringify(payload)]).size > MAX_NOTE_SIZE) {
+    noteFormError.textContent = "Esta nota ficou grande demais para salvar. Remova algum anexo ou reduza o texto das páginas.";
     noteFormError.hidden = false;
     return;
   }
@@ -609,8 +716,10 @@ noteForm.addEventListener("submit", async (e) => {
   try {
     const notesRef = collection(db, "users", currentUser.uid, "notes");
     const wasEditing = !!editingNoteId;
+    // "content" é o campo antigo de página única; some ao editar uma nota
+    // criada antes de existirem várias páginas.
     const write = wasEditing
-      ? updateDoc(doc(notesRef, editingNoteId), payload)
+      ? updateDoc(doc(notesRef, editingNoteId), { ...payload, content: deleteField() })
       : setDoc(doc(notesRef), { ...payload, createdAt: serverTimestamp() });
     const result = await commitWrite(write);
     showToast(
@@ -650,7 +759,24 @@ deleteBtn.addEventListener("click", async () => {
 printBtn.addEventListener("click", () => {
   document.getElementById("print-date").textContent = formatDate(noteDate.value);
   document.getElementById("print-title").textContent = noteTitle.value;
-  document.getElementById("print-content").textContent = noteContent.value;
+  const printContent = document.getElementById("print-content");
+  printContent.innerHTML = "";
+  const totalPages = currentPages.length;
+  currentPages.forEach((pageText, index) => {
+    const pageBlock = document.createElement("div");
+    pageBlock.className = "print-page";
+    if (totalPages > 1) {
+      const label = document.createElement("p");
+      label.className = "print-page-label";
+      label.textContent = `Página ${index + 1} de ${totalPages}`;
+      pageBlock.appendChild(label);
+    }
+    const p = document.createElement("p");
+    p.className = "print-page-text";
+    p.textContent = pageText;
+    pageBlock.appendChild(p);
+    printContent.appendChild(pageBlock);
+  });
   window.print();
 });
 
