@@ -90,8 +90,12 @@
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
     <div class="spiral spiral-modal" aria-hidden="true"></div>
     <div class="modal-header">
+      <div class="window-controls">
+        <button type="button" id="modal-close" class="mac-dot mac-dot-close" aria-label="Fechar"></button>
+        <span class="mac-dot mac-dot-yellow" aria-hidden="true"></span>
+        <span class="mac-dot mac-dot-green" aria-hidden="true"></span>
+      </div>
       <h2 id="modal-title">Nova nota</h2>
-      <button id="modal-close" class="btn-icon" aria-label="Fechar">✕</button>
     </div>
     <form id="note-form" class="note-form">
       <label class="field">
@@ -102,10 +106,19 @@
         <span>Data</span>
         <input type="date" id="note-date" required>
       </label>
-      <label class="field">
-        <span>Conteúdo</span>
-        <textarea id="note-content" rows="8" placeholder="Escreva aqui sua anotação…" required></textarea>
-      </label>
+      <div class="field">
+        <div class="content-label-row">
+          <span>Conteúdo</span>
+          <span id="page-indicator" class="page-indicator">Página 1 de 1</span>
+        </div>
+        <textarea id="note-content" rows="8" placeholder="Escreva aqui sua anotação…"></textarea>
+        <div class="page-nav">
+          <button type="button" id="page-prev-btn" class="btn-page">◀ Anterior</button>
+          <button type="button" id="add-page-btn" class="btn-page">+ Nova página</button>
+          <button type="button" id="delete-page-btn" class="btn-page btn-page-danger" hidden>Excluir página</button>
+          <button type="button" id="page-next-btn" class="btn-page">Próxima ▶</button>
+        </div>
+      </div>
       <div class="field">
         <span>Anexos</span>
         <div id="attachments-list" class="attachments-list" hidden></div>
@@ -133,7 +146,7 @@
 <div id="print-area">
   <p id="print-date"></p>
   <h1 id="print-title"></h1>
-  <p id="print-content"></p>
+  <div id="print-content"></div>
   <p id="print-footer">Paulo Xavier, Psicólogo, CRP-20/09816</p>
 </div>
 
