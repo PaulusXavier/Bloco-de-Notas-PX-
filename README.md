@@ -68,6 +68,52 @@ icon-192.png, icon-192-maskable.png,
 icon-512.png, icon-512-maskable.png → ícones do app
 ```
 
+## Celular e tablet
+
+Como o uso principal é pelo celular e tablet instalados como app, o visual
+tem alguns ajustes pensados especificamente para toque:
+
+- Os campos de texto usam letra de pelo menos 16px — abaixo disso o Safari
+  do iPhone dá zoom sozinho ao tocar no campo, o que já foi corrigido aqui.
+- O cabeçalho do app quebra a linha em vez de estourar a tela em celulares
+  mais estreitos.
+- Botões pequenos (fechar nota, baixar/remover anexo, navegar entre
+  páginas) ficam maiores especificamente em telas de toque, sem mudar o
+  visual no computador.
+- Em tablets (e telas a partir de ~700px de largura), a lista de notas usa
+  mais de uma coluna para aproveitar o espaço, em vez de ficar esticada
+  numa coluna só.
+
+## Melhorias visuais e de uso
+
+- Cada nota (nos cartões da lista e na janela de edição) tem uma pequena
+  barra com três bolinhas coloridas, no estilo das janelas do macOS.
+  No modal, a bolinha vermelha fecha a nota.
+- Dentro do modal, **Ctrl+Enter** (ou **Cmd+Enter** no Mac) salva a nota na
+  hora, sem precisar tirar a mão do teclado.
+- Se uma nota (texto de todas as páginas + anexos) ficar grande demais para
+  o Firestore, o app avisa antes de tentar salvar, em vez de dar um erro
+  confuso.
+
+## Páginas
+
+Cada nota pode ter **mais de uma página**. Ao abrir uma nota (nova ou
+existente), acima do campo de texto aparece o indicador "Página 1 de 1"; os
+botões abaixo do campo permitem:
+
+- **+ Nova página** — adiciona uma página em branco e já muda para ela.
+- **◀ Anterior / Próxima ▶** — navega entre as páginas já criadas.
+- **Excluir página** — remove a página atual (só aparece quando a nota tem
+  mais de uma página).
+
+O texto de cada página fica guardado separadamente; trocar de página nunca
+apaga o que foi escrito nas outras. Ao salvar, todas as páginas são gravadas
+juntas na nota. Na lista de notas, o cartão mostra "📄 N páginas" quando a
+nota tem mais de uma. Ao imprimir (🖨️), cada página sai numa folha separada.
+
+Notas criadas antes desta função continuam funcionando normalmente, como
+notas de uma página só.
+
 ## Anexos
 
 Cada nota aceita até **5 arquivos, de até 700 KB cada** (imagens, PDF, Word,
@@ -96,7 +142,7 @@ plano Blaze no projeto.
 ## Publicar uma nova versão
 
 Sempre que alterar qualquer arquivo do app, aumente o número de `CACHE_NAME`
-em `service-worker.js` (ex.: `v4` → `v5`). É a mudança nesse arquivo que faz os
+em `service-worker.js` (ex.: `v8` → `v9`). É a mudança nesse arquivo que faz os
 aparelhos detectarem e aplicarem a atualização.
 
 ## Segurança
