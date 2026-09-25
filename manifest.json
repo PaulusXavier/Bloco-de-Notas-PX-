@@ -1,7 +1,7 @@
 {
-  "name": "Bloco de Notas · Paulo Xavier, CRP-20/09816",
-  "short_name": "Bloco de Notas",
-  "description": "Bloco de notas pessoal com sincronização entre dispositivos",
+  "name": "Grafia · Bloco de Notas de Paulo Xavier, CRP-20/09816",
+  "short_name": "Grafia",
+  "description": "Grafia, seu bloco de notas pessoal com sincronização entre dispositivos",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
