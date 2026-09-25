@@ -111,17 +111,21 @@
         <span class="mac-dot mac-dot-green" aria-hidden="true"></span>
       </div>
       <h2 id="modal-title">Nova nota</h2>
+      <button type="button" id="modal-fullscreen-btn" class="btn-icon modal-fullscreen-btn"
+              title="Tela cheia" aria-label="Tela cheia">⛶</button>
     </div>
     <form id="note-form" class="note-form">
-      <label class="field">
-        <span>Título</span>
-        <input type="text" id="note-title" placeholder="Ex.: Observações da semana" required>
-      </label>
-      <label class="field">
-        <span>Data</span>
-        <input type="date" id="note-date" required>
-      </label>
-      <div class="field">
+      <div class="field-row">
+        <label class="field field-title-date">
+          <span>Título</span>
+          <input type="text" id="note-title" placeholder="Ex.: Observações da semana" required>
+        </label>
+        <label class="field field-title-date">
+          <span>Data</span>
+          <input type="date" id="note-date" required>
+        </label>
+      </div>
+      <div class="field field-content">
         <div class="content-label-row">
           <span>Conteúdo</span>
           <span id="page-indicator" class="page-indicator">Página 1 de 1</span>
