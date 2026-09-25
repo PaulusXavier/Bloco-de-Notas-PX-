@@ -116,10 +116,11 @@ notas de uma página só.
 
 ## Anexos
 
-Cada nota aceita até **5 arquivos, de até 700 KB cada** (imagens, PDF, Word,
-texto). Ao abrir uma nota, toque em "📎 Anexar arquivo" para escolher um ou
-mais arquivos; eles aparecem numa lista com nome, tamanho, botão de baixar
-(⬇) e de remover (✕) antes mesmo de salvar a nota.
+Cada nota aceita até **5 arquivos, de até 500 KB cada** (imagens, PDF, Word,
+texto), somando no máximo ~700 KB. Ao abrir uma nota, toque em "📎 Anexar
+arquivo" para escolher um ou mais arquivos; eles aparecem numa lista com
+nome, tamanho, botão de baixar (⬇) e de remover (✕) antes mesmo de salvar a
+nota.
 
 Os anexos são guardados **dentro do próprio documento da nota no Firestore**
 (convertidos para texto/base64), e não no Firebase Storage. Isso foi proposital:
@@ -128,11 +129,13 @@ Os anexos são guardados **dentro do próprio documento da nota no Firestore**
   nenhuma configuração no Firebase.
 - Não exigem habilitar o Firebase Storage, que hoje pede um plano pago
   (Blaze) mesmo para uso pequeno.
-- Em troca, o Firestore limita cada nota (texto + anexos somados) a 1 MB —
-  por isso o limite de 700 KB por arquivo e 5 arquivos por nota. Esses
-  limites estão no topo do arquivo `app.js`, nas constantes
-  `MAX_ATTACHMENT_SIZE`, `MAX_ATTACHMENTS_TOTAL` e `MAX_ATTACHMENTS_COUNT`,
-  caso queira ajustá-los.
+- Em troca, o Firestore limita cada nota (texto + anexos somados) a 1 MB.
+  A conversão para base64 deixa cada arquivo ~33% maior do que o tamanho
+  original — os limites de 500 KB por arquivo e ~700 KB no total já contam
+  com essa margem, para o app nunca "aceitar" um anexo que depois não coube
+  de verdade na nota. Esses limites estão no topo do arquivo `app.js`, nas
+  constantes `MAX_ATTACHMENT_SIZE`, `MAX_ATTACHMENTS_TOTAL` e
+  `MAX_ATTACHMENTS_COUNT`, caso queira ajustá-los.
 
 Se no futuro os anexos precisarem ser maiores (fotos em alta resolução,
 vídeos etc.), o caminho é migrar para o **Firebase Storage**, guardando ali
@@ -147,8 +150,43 @@ aparelhos detectarem e aplicarem a atualização.
 
 ## Segurança
 
-- Depois de criar o seu acesso, desative novos cadastros em **Authentication →
-  Settings → User actions → Enable create (sign-up)**. Assim ninguém mais
-  consegue criar conta apenas com o link público.
+Reforços já aplicados no código:
+
+- **Regras do Firestore** (`firestore.rules`) agora, além de checar se a nota
+  pertence a quem está gravando, validam o formato dos dados (título, data,
+  quantidade de páginas e de anexos) — antes, qualquer campo em qualquer
+  formato era aceito, desde que fosse na pasta do próprio usuário.
+- **Mensagens de login** não revelam mais se um e-mail tem conta ou não
+  ("E-mail ou senha incorretos" em vez de "conta não encontrada" / "senha
+  incorreta" separadas) — evita que alguém descubra, por tentativa e erro,
+  quem usa o app.
+- **Senha mínima de 8 caracteres** para contas novas (contas já existentes
+  com 6 caracteres continuam funcionando normalmente).
+- **Content-Security-Policy** no `index.html`: o navegador só executa
+  scripts deste site e do Firebase, e só conecta aos domínios do próprio
+  Firebase — uma camada extra de proteção contra injeção de código, mesmo
+  que não haja nenhuma brecha conhecida hoje.
+
+Depois de publicar estes arquivos, ainda vale fazer no **Console do
+Firebase** (não é algo que se resolve por código):
+
+1. **Cole as novas regras**: em Firestore Database → Regras, substitua pelo
+   conteúdo atualizado de `firestore.rules` e publique.
+2. **Desative novos cadastros**: em Authentication → Settings → User
+   actions, desmarque "Enable create (sign-up)" depois de criar seu próprio
+   acesso. Assim ninguém mais cria conta pelo link público.
+3. **Ative o App Check** (Authentication/App Check no menu lateral), com
+   reCAPTCHA v3 para Web. Isso impede que alguém use as chaves do projeto
+   (que ficam visíveis em `firebase-config.js`, como em qualquer app Firebase)
+   fora do seu site para tentar login em massa ou gastar sua cota.
+4. Em Authentication → Settings → Segurança, se disponível para o seu
+   plano, ative **"Proteção contra enumeração de e-mail"** — reforça no lado
+   do próprio Firebase o mesmo cuidado já feito nas mensagens de erro do app.
+
+Sobre a chave em `firebase-config.js`: ela **não é um segredo** (toda
+aplicação Firebase expõe essa chave no navegador) — quem protege os dados
+de verdade são as regras do Firestore e o login, por isso os passos acima
+importam mais do que "esconder" a chave.
+
 - Ao sair (⏻), as notas guardadas no aparelho são apagadas — isso protege
   aparelhos compartilhados.
