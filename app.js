@@ -45,6 +45,7 @@ const emptyState   = document.getElementById("empty-state");
 const noteModal    = document.getElementById("note-modal");
 const modalTitle   = document.getElementById("modal-title");
 const modalClose   = document.getElementById("modal-close");
+const modalFullscreenBtn = document.getElementById("modal-fullscreen-btn");
 const noteForm     = document.getElementById("note-form");
 const noteFormError = document.getElementById("note-form-error");
 const noteTitle    = document.getElementById("note-title");
@@ -79,6 +80,7 @@ let currentAttachments = []; // anexos da nota aberta no momento no modal
 let attachmentsDirty = false; // true se anexos foram adicionados/removidos nesta edição
 let currentPages = [""]; // páginas da nota aberta no momento no modal (uma nota pode ter várias)
 let currentPageIndex = 0;
+let isModalFullscreen = false; // tela cheia do modal de nota (bom para anotar reunião no tablet)
 
 // Guardados como base64 dentro do próprio documento da nota (e não no Firebase
 // Storage): assim os anexos entram no mesmo cache offline das notas e não
@@ -646,6 +648,43 @@ deletePageBtn.addEventListener("click", () => {
   updatePageNav();
 });
 
+/* ---------- Modo tela cheia (anotações de reunião no tablet) ---------- */
+// Além de expandir o modal via CSS (funciona em qualquer navegador), tenta
+// também acionar a API de tela cheia REAL do navegador — em tablets Android
+// isso esconde a barra de endereço, ganhando ainda mais espaço. No iOS
+// Safari essa API não existe fora de app instalado; o modal expandido via
+// CSS já garante o ganho de espaço mesmo assim.
+function setModalFullscreen(on) {
+  isModalFullscreen = on;
+  noteModal.classList.toggle("is-fullscreen", on);
+  modalFullscreenBtn.classList.toggle("is-active", on);
+  modalFullscreenBtn.textContent = on ? "⤡" : "⛶";
+  modalFullscreenBtn.title = on ? "Sair da tela cheia" : "Tela cheia";
+  modalFullscreenBtn.setAttribute("aria-label", on ? "Sair da tela cheia" : "Tela cheia");
+}
+
+modalFullscreenBtn.addEventListener("click", async () => {
+  setModalFullscreen(!isModalFullscreen);
+  try {
+    if (isModalFullscreen && document.fullscreenEnabled && !document.fullscreenElement) {
+      await noteModal.requestFullscreen();
+    } else if (!isModalFullscreen && document.fullscreenElement) {
+      await document.exitFullscreen();
+    }
+  } catch (err) {
+    // A API pode não existir ou ser recusada (comum no iOS) — sem problema,
+    // a expansão via CSS acima já cobre a maior parte do ganho de espaço.
+    console.warn("Tela cheia do navegador indisponível:", err);
+  }
+  noteContent.focus();
+});
+
+// Se o usuário sair da tela cheia REAL por fora do nosso botão (tecla Esc,
+// gesto do sistema), mantém o app e o botão sincronizados com a realidade.
+document.addEventListener("fullscreenchange", () => {
+  if (!document.fullscreenElement && isModalFullscreen) setModalFullscreen(false);
+});
+
 /* ---------- Modal: criar / editar ---------- */
 function openModal(note = null) {
   editingNoteId = note ? note.id : null;
@@ -669,6 +708,7 @@ function openModal(note = null) {
   currentPageIndex = 0;
   loadPageIntoTextarea();
   updatePageNav();
+  setModalFullscreen(false);
 
   modalSnapshot = formState();
   noteModal.hidden = false;
@@ -680,6 +720,10 @@ const formState = () => JSON.stringify([noteTitle.value, noteDate.value, current
 
 function closeModal() {
   noteModal.hidden = true;
+  if (isModalFullscreen) {
+    setModalFullscreen(false);
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  }
   editingNoteId = null;
   noteForm.reset();
   noteFormError.hidden = true;
@@ -709,7 +753,10 @@ noteModal.addEventListener("click", (e) => {
   if (e.target === noteModal && backdropPressed) requestClose();
 });
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && !noteModal.hidden) requestClose();
+  if (e.key === "Escape" && !noteModal.hidden) {
+    if (document.fullscreenElement) return; // deixa o navegador só sair da tela cheia
+    requestClose();
+  }
   // Ctrl/Cmd+Enter salva de qualquer campo do modal (inclusive da textarea,
   // onde Enter sozinho só quebra linha).
   if ((e.ctrlKey || e.metaKey) && e.key === "Enter" && !noteModal.hidden) {
