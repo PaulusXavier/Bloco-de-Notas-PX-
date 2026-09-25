@@ -2,7 +2,12 @@
 // -------------------------------------------------------------
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  initializeAuth,
+  indexedDBLocalPersistence,
+  browserLocalPersistence,
+  inMemoryPersistence
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   initializeFirestore,
   persistentLocalCache,
@@ -21,7 +26,18 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
-export const auth = getAuth(app);
+// initializeAuth (em vez de getAuth) permite escolher explicitamente ONDE a
+// sessão de login fica guardada no aparelho, com uma lista de prioridade:
+// tenta IndexedDB primeiro (sobrevive a reiniciar o navegador, é o que
+// permite abrir o app já logado mesmo sem internet); se o navegador não
+// suportar, cai para localStorage; se nem isso (ex.: aba anônima com
+// restrições), usa só memória — a pessoa continua logada nesta aba, mas
+// precisa entrar de novo ao reabrir. Sem essa lista explícita, alguns
+// navegadores/PWAs instalados podem silenciosamente "esquecer" a sessão ao
+// reabrir offline.
+export const auth = initializeAuth(app, {
+  persistence: [indexedDBLocalPersistence, browserLocalPersistence, inMemoryPersistence]
+});
 
 // Cache local persistente: notas criadas ou editadas offline ficam guardadas
 // no dispositivo e são enviadas automaticamente assim que a conexão voltar.
