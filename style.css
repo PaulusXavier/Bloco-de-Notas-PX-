@@ -152,6 +152,8 @@ body {
 
 .field { display: flex; flex-direction: column; gap: 6px; font-size: 0.9rem; }
 
+.field-row { display: flex; flex-direction: column; gap: 14px; }
+
 .field span { color: var(--ink-soft); font-weight: 600; }
 
 input, textarea {
@@ -585,6 +587,12 @@ input:focus, textarea:focus {
   color: var(--sage-dark);
 }
 
+.modal-fullscreen-btn {
+  position: relative;
+  z-index: 1;
+  margin-left: auto;
+}
+
 /* ---------- Bolinhas estilo macOS ---------- */
 .window-controls {
   position: relative;
@@ -640,6 +648,61 @@ input:focus, textarea:focus {
 .note-form { display: flex; flex-direction: column; gap: 14px; }
 
 .note-form textarea { resize: vertical; }
+
+/* ---------- Modo tela cheia (ideal para anotar reunião no tablet) ---------- */
+/* No próprio app (via CSS) e, quando o navegador permite, também pela API de
+   tela cheia real (esconde a barra de endereço em tablets Android — no iOS a
+   barra não some, mas o modal já ocupa toda a tela mesmo assim). */
+.modal-backdrop.is-fullscreen {
+  padding: 0;
+}
+
+.modal-backdrop.is-fullscreen .modal {
+  max-width: none;
+  width: 100%;
+  height: 100%;
+  max-height: 100%;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+  padding: calc(20px + env(safe-area-inset-top, 0px)) 24px
+           calc(20px + env(safe-area-inset-bottom, 0px)) 44px;
+}
+
+.modal-backdrop.is-fullscreen .note-form {
+  flex: 1;
+  min-height: 0;
+}
+
+/* Título e data lado a lado em tela cheia, pra sobrar mais altura pro texto. */
+.modal-backdrop.is-fullscreen .field-row {
+  flex-direction: row;
+  gap: 14px;
+}
+.modal-backdrop.is-fullscreen .field-title-date {
+  flex: 1;
+  min-width: 0;
+}
+
+.modal-backdrop.is-fullscreen .field-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.modal-backdrop.is-fullscreen .field-content textarea {
+  flex: 1;
+  min-height: 160px;
+  resize: none;
+  font-size: 1.1rem;
+  line-height: 1.5;
+}
+
+.modal-fullscreen-btn.is-active {
+  background: var(--rule);
+  color: var(--ink);
+}
 
 /* ---------- Navegação de páginas dentro da nota ---------- */
 .content-label-row {
