@@ -24,6 +24,21 @@ import {
 /* ---------- Elementos ---------- */
 const offlineBanner = document.getElementById("offline-banner");
 
+const mascotTemplate = document.getElementById("mascot-template");
+const mascotSlot   = document.getElementById("mascot-slot");
+const mascotSlotSm = document.getElementById("mascot-slot-sm");
+
+// O mascote (um SVG) fica guardado uma única vez num <template> e é clonado
+// para cada lugar que o usa — a tela de entrada (grande) e o topo do app
+// (pequeno, via CSS) — em vez de repetir o mesmo desenho duas vezes no HTML.
+function mountMascot(slot) {
+  if (!slot || !mascotTemplate) return;
+  slot.appendChild(mascotTemplate.content.cloneNode(true));
+}
+mountMascot(mascotSlot);
+mountMascot(mascotSlotSm);
+
+const loadingScreen = document.getElementById("loading-screen");
 const authScreen   = document.getElementById("auth-screen");
 const appScreen    = document.getElementById("app-screen");
 const authForm     = document.getElementById("auth-form");
@@ -264,8 +279,10 @@ authForm.addEventListener("submit", async (e) => {
   try {
     if (isSignUpMode) {
       await createUserWithEmailAndPassword(auth, email, password);
+      showToast("Conta criada");
     } else {
       await signInWithEmailAndPassword(auth, email, password);
+      showToast("Login realizado");
     }
   } catch (err) {
     console.error(err);
@@ -325,6 +342,7 @@ logoutBtn.addEventListener("click", async () => {
 });
 
 onAuthStateChanged(auth, (user) => {
+  loadingScreen.hidden = true;
   currentUser = user;
   if (user) {
     authScreen.hidden = true;
@@ -555,6 +573,7 @@ function renderAttachments() {
       currentAttachments.splice(index, 1);
       attachmentsDirty = true;
       renderAttachments();
+      showToast("Anexo removido");
     });
 
     chip.append(thumb, info, downloadBtn, removeBtn);
@@ -567,6 +586,7 @@ attachBtn.addEventListener("click", () => attachInput.click());
 attachInput.addEventListener("change", async () => {
   const files = Array.from(attachInput.files || []);
   attachInput.value = ""; // permite escolher de novo o mesmo arquivo depois de removê-lo
+  let addedCount = 0;
 
   for (const file of files) {
     if (currentAttachments.length >= MAX_ATTACHMENTS_COUNT) {
@@ -588,6 +608,7 @@ attachInput.addEventListener("change", async () => {
       const data = await fileToDataUrl(file);
       currentAttachments.push({ name: file.name, type: file.type || "", size: file.size, data });
       attachmentsDirty = true;
+      addedCount += 1;
       noteFormError.hidden = true;
     } catch (err) {
       console.error(err);
@@ -596,6 +617,9 @@ attachInput.addEventListener("change", async () => {
     }
   }
   renderAttachments();
+  if (addedCount > 0) {
+    showToast(addedCount === 1 ? "Anexo adicionado" : `${addedCount} anexos adicionados`);
+  }
 });
 
 /* ---------- Páginas dentro da nota ---------- */
@@ -637,6 +661,7 @@ addPageBtn.addEventListener("click", () => {
   loadPageIntoTextarea();
   updatePageNav();
   noteContent.focus();
+  showToast(`Página ${currentPageIndex + 1} adicionada`);
 });
 
 deletePageBtn.addEventListener("click", () => {
@@ -646,6 +671,7 @@ deletePageBtn.addEventListener("click", () => {
   currentPageIndex = Math.min(currentPageIndex, currentPages.length - 1);
   loadPageIntoTextarea();
   updatePageNav();
+  showToast("Página excluída");
 });
 
 /* ---------- Modo tela cheia (anotações de reunião no tablet) ---------- */
